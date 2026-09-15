@@ -1,0 +1,142 @@
+---
+import { projects, shortName } from '../../data/projects';
+import { ragOf, ragColor } from '../../lib/rag';
+import { thresholds } from '../../lib/thresholds';
+import { ratio, pct } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+
+const top = [...projects].sort((a, b) => b.riskScore - a.riskScore).slice(0, 7);
+
+const scoreTone = (s: number) => (s >= thresholds.riskScore.high ? 'merah' : s >= thresholds.riskScore.medium ? 'kuning' : 'biru');
+const toneColor: Record<string, string> = { merah: 'var(--red)', kuning: 'var(--amber)', biru: 'var(--blue)' };
+
+/** Pemicu ditampilkan apa adanya bila tersedia; bila tidak, diturunkan dari indikator. */
+const driversOf = (p: (typeof projects)[number]) =>
+  p.riskDrivers.length > 0
+    ? p.riskDrivers
+    : [`SPI ${ratio(p.spi)}`, `CPI ${ratio(p.cpi)}`, `${p.openFindings} temuan terbuka`];
+
+const highCount = top.filter((p) => p.riskScore >= thresholds.riskScore.high).length;
+---
+
+<Panel
+  id="F1"
+  title="Prediksi risiko proyek"
+  question="Proyek mana yang kemungkinan besar gagal memenuhi target?"
+  source="Platform big data, model prediksi"
+  freshness="harian pukul 02.00"
+  flush
+>
+  <p class="f1-lead">
+    <strong class="t-red num">{highCount}</strong> dari 7 proyek berskor di atas {thresholds.riskScore.high} —
+    model memperkirakan kemungkinan besar keterlambatan lebih dari 30 hari.
+  </p>
+
+  <div class="table-scroll">
+  <table class="table f1">
+    <caption class="sr-only">Tujuh proyek dengan skor risiko tertinggi beserta pemicunya</caption>
+    <thead>
+      <tr>
+        <th scope="col" class="f1__rank">#</th>
+        <th scope="col">Proyek</th>
+        <th scope="col" class="f1__scorecol">Skor risiko 0–100</th>
+        <th scope="col">Pemicu utama</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        top.map((p, i) => {
+          const t = scoreTone(p.riskScore);
+          return (
+            <tr data-project-row={p.id}>
+              <td class="f1__rank num">{i + 1}</td>
+              <th scope="row" class="f1__name">
+                <span class="f1__rail" style={`background:${ragColor[ragOf(p)]}`} aria-hidden="true" />
+                <button type="button" class="linkish" data-project-open={p.id}>{shortName[p.id]}</button>
+                <span class="f1__meta">{p.category} · {p.location}</span>
+              </th>
+              <td>
+                <div class="f1__meter" data-tip={`${shortName[p.id]}\nSkor risiko\t${p.riskScore}\nSPI\t${ratio(p.spi)}\nCPI\t${ratio(p.cpi)}\nSelisih material\t${pct(p.materialVariance)}\nHari pasokan terendah\t${p.minSupplyDays} hari`}>
+                  <span class="f1__bar">
+                    <span class="f1__fill" style={`width:${p.riskScore}%; background:${toneColor[t]}`} />
+                    <span class="f1__threshold" style={`left:${thresholds.riskScore.high}%`} />
+                  </span>
+                  <span class="num f1__score">{p.riskScore}</span>
+                </div>
+              </td>
+              <td class="f1__drivers">
+                <ul class="chips">
+                  {driversOf(p).map((d) => <li class="chip">{d}</li>)}
+                </ul>
+              </td>
+            </tr>
+          );
+        })
+      }
+    </tbody>
+  </table>
+  </div>
+
+  <p class="f1-note">
+    <strong>Masukan model:</strong> SPI, CPI, selisih material, jumlah dan umur temuan terbuka, hari pasokan material
+    terendah, indeks risiko sosial, kompleksitas proyek, dan rekam jejak kontraktor pelaksana. Model dilatih dari
+    riwayat proyek lima tahun terakhir dan dijalankan ulang setiap malam. Skor adalah alat bantu, bukan pengganti
+    penilaian manajemen; setiap skor selalu disertai pemicu agar direksi dapat menilai kewajarannya.
+  </p>
+</Panel>
+
+<style>
+  .f1-lead { margin: 0; padding: 12px var(--pad); font-size: 0.8125rem; color: var(--ink-2); border-bottom: 1px solid var(--line-soft); }
+
+  .f1 { min-width: 560px; }
+  .f1 th, .f1 td { padding-left: 10px; }
+  .f1 thead th:first-child, .f1 tbody td.f1__rank { padding-left: var(--pad); }
+  .f1 th:last-child, .f1 td:last-child { padding-right: var(--pad); }
+
+  .f1__rank { width: 26px; text-align: left; color: var(--ink-3); font-family: var(--font-display); font-size: 0.9375rem; }
+  .f1__scorecol { width: 28%; }
+
+  .f1__name { position: relative; font-weight: 600; padding-left: 14px !important; white-space: nowrap; }
+  .f1__rail { position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; }
+  .f1__meta { display: block; font-weight: 400; font-size: 0.6875rem; color: var(--ink-3); }
+
+  .f1__meter { display: flex; align-items: center; gap: 9px; }
+  .f1__bar { position: relative; flex: 1; height: 12px; background: var(--concrete); border: 1px solid var(--line-soft); min-width: 70px; }
+  .f1__fill { display: block; height: 100%; }
+  .f1__threshold { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); }
+  .f1__score { font-size: 1.125rem; min-width: 24px; text-align: right; }
+
+  .f1__drivers { width: 38%; }
+  .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+
+  .chip {
+    font-size: 0.6875rem;
+    padding: 1px 6px 2px;
+    background: var(--neutral-wash);
+    border: 1px solid var(--line-soft);
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  .f1-note {
+    margin: 0;
+    padding: 13px var(--pad) 4px;
+    font-size: 0.6875rem;
+    color: var(--ink-3);
+    line-height: 1.5;
+    border-top: 1px solid var(--line-soft);
+  }
+
+  .linkish {
+    font: inherit;
+    font-weight: 600;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--blue-ink);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .linkish:hover { color: var(--ink); }
+</style>

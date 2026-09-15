@@ -1,0 +1,104 @@
+---
+import { communityPrograms } from '../../data/community';
+import { num, pct } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+
+const rows = communityPrograms.map((p) => ({ ...p, share: (p.actual / p.target) * 100 }));
+const overall = (rows.reduce((s, r) => s + r.share, 0) / rows.length);
+---
+
+<Panel
+  id="E3"
+  title="Program komunitas"
+  question="Apakah janji perusahaan kepada masyarakat sudah dipenuhi?"
+  source="Modul CSR dan HR, ditautkan ke lokasi proyek"
+  freshness="harian"
+  aggregate
+>
+  <div class="overall">
+    <span class="kpi__label">Rata-rata pemenuhan janji</span>
+    <span class="num overall__value">{pct(overall, 0)}</span>
+  </div>
+
+  <ul class="programs">
+    {
+      rows.map((r) => {
+        const t = r.share >= 90 ? 'hijau' : r.share >= 70 ? 'kuning' : 'merah';
+        return (
+          <li class="program">
+            <div class="program__head">
+              <span class="program__label">{r.label}</span>
+              <span class="program__nums">
+                <span class={`num program__actual t-${t === 'hijau' ? 'green' : t === 'kuning' ? 'amber' : 'red'}`}>
+                  {num(r.actual, r.actual % 1 === 0 ? 0 : 1)}
+                </span>
+                <span class="program__target">dari {num(r.target)} {r.unit}</span>
+              </span>
+            </div>
+            <div
+              class="program__bar"
+              data-tip={`${r.label}\nRealisasi\t${num(r.actual, r.actual % 1 === 0 ? 0 : 1)} ${r.unit}\nTarget\t${num(r.target)} ${r.unit}\nPemenuhan\t${pct(r.share, 0)}`}
+            >
+              <span class={`program__fill is-${t}`} style={`width:${r.share}%`} />
+              <span class="program__pct num">{pct(r.share, 0)}</span>
+            </div>
+            <span class="program__note">{r.note}</span>
+          </li>
+        );
+      })
+    }
+  </ul>
+
+  <p class="why">
+    Program komunitas adalah instrumen pencegahan konflik, bukan sekadar laporan CSR. Keterlambatan realisasi
+    berkorelasi dengan kenaikan indeks risiko sosial pada panel E2.
+  </p>
+</Panel>
+
+<style>
+  .overall {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .overall__value { font-family: var(--font-display); font-weight: 600; font-size: 2rem; line-height: 1; }
+
+  .programs { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+
+  .program__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
+  .program__label { font-size: 0.8125rem; font-weight: 600; }
+  .program__nums { display: inline-flex; align-items: baseline; gap: 6px; }
+  .program__actual { font-size: 1.125rem; }
+  .program__target { font-size: 0.6875rem; color: var(--ink-3); }
+
+  .program__bar {
+    position: relative;
+    height: 20px;
+    background: var(--concrete);
+    border: 1px solid var(--line-soft);
+    display: flex;
+    align-items: center;
+  }
+
+  .program__fill { position: absolute; inset: 0 auto 0 0; }
+  .program__fill.is-hijau { background: var(--green); }
+  .program__fill.is-kuning { background: var(--amber); }
+  .program__fill.is-merah { background: var(--red); }
+
+  .program__pct {
+    position: relative;
+    margin-left: auto;
+    padding-right: 7px;
+    font-size: 0.75rem;
+    color: var(--ink-2);
+  }
+
+  .program__note { display: block; margin-top: 4px; font-size: 0.6875rem; color: var(--ink-3); }
+
+  .why { margin: 16px 0 0; font-size: 0.6875rem; color: var(--ink-3); line-height: 1.45; }
+</style>

@@ -1,0 +1,132 @@
+---
+import { criticalIssues, today } from '../../data/risk';
+import { shortName } from '../../data/projects';
+import { tanggal, selisihHari, rupiahJuta } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+
+const rows = criticalIssues
+  .map((i) => {
+    const daysLeft = selisihHari(i.due, today);
+    return { ...i, daysLeft, overdue: daysLeft < 0 };
+  })
+  .sort((a, b) => a.daysLeft - b.daysLeft);
+
+const overdue = rows.filter((r) => r.overdue).length;
+const awaiting = rows.filter((r) => r.status === 'Menunggu keputusan').length;
+
+const sourceTag: Record<string, string> = {
+  'Eskalasi temuan': 'amber',
+  'Anomali material': 'red',
+  'Stok kritis': 'red',
+  'Diajukan Direktur Operasi': 'blue',
+};
+
+const statusTag: Record<string, string> = {
+  'Menunggu keputusan': 'red',
+  'Dalam penanganan': 'amber',
+  Baru: 'blue',
+};
+---
+
+<Panel
+  id="F2"
+  title="Isu kritis menunggu keputusan direksi"
+  question="Apa yang harus diputuskan direksi minggu ini?"
+  source="Alur kerja manajemen isu, eskalasi otomatis dari panel lain"
+  freshness="waktu nyata"
+  flush
+>
+  <div class="f2-lead">
+    <p class="f2-lead__text">
+      <strong class="num t-red">{overdue}</strong> isu melewati tenggat dan otomatis masuk agenda rapat direksi
+      berikutnya. <strong class="num">{awaiting}</strong> isu menunggu keputusan.
+    </p>
+    <p class="f2-lead__paths">
+      Jalur masuk: eskalasi otomatis dari panel D2 · anomali material di atas Rp 1 M dari panel C1 · pengajuan manual
+      oleh Direktur Operasi.
+    </p>
+  </div>
+
+  <div class="f2-scroll">
+    <table class="table f2">
+      <caption class="sr-only">Isu kritis yang menunggu keputusan direksi</caption>
+      <thead>
+        <tr>
+          <th scope="col">Isu dan proyek terkait</th>
+          <th scope="col">Penanggung jawab</th>
+          <th scope="col">Tenggat</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((r) => (
+            <tr class={r.overdue ? 'is-overdue' : ''} data-project-row={r.projectId}>
+              <th scope="row" class="f2__issue">
+                <span class="f2__rail" aria-hidden="true" />
+                <span class="f2__id">{r.id}</span>
+                <span class="f2__title">{r.title}</span>
+                <span class="f2__tags">
+                  <button type="button" class="tag tag--project" data-project-open={r.projectId}>
+                    {shortName[r.projectId]}
+                  </button>
+                  <span class={`tag tag--${sourceTag[r.source]}`}>{r.source}</span>
+                  {r.impact && <span class="tag">Dampak {rupiahJuta(r.impact)}</span>}
+                </span>
+              </th>
+              <td class="f2__owner">{r.owner}</td>
+              <td class="nowrap">
+                <span class="f2__date">{tanggal(r.due)}</span>
+                <span class={`f2__left ${r.overdue ? 't-red' : r.daysLeft <= 3 ? 't-amber' : 'muted'}`}>
+                  {r.overdue ? `lewat ${Math.abs(r.daysLeft)} hari` : r.daysLeft === 0 ? 'jatuh tempo hari ini' : `${r.daysLeft} hari lagi`}
+                </span>
+              </td>
+              <td><span class={`tag tag--${statusTag[r.status]}`}>{r.status}</span></td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</Panel>
+
+<style>
+  .f2-lead { padding: 12px var(--pad); border-bottom: 1px solid var(--line-soft); }
+  .f2-lead__text { margin: 0; font-size: 0.8125rem; color: var(--ink-2); }
+  .f2-lead__paths { margin: 5px 0 0; font-size: 0.6875rem; color: var(--ink-3); }
+
+  .f2-scroll { overflow-x: auto; }
+  .f2 { min-width: 620px; }
+  .f2 th, .f2 td { padding-left: 10px; vertical-align: top; }
+  .f2 thead th:first-child { padding-left: var(--pad); }
+  .f2 th:last-child, .f2 td:last-child { padding-right: var(--pad); }
+
+  .f2__issue { position: relative; padding-left: calc(var(--pad) + 8px) !important; width: 56%; font-weight: 400; }
+  .f2__owner { font-size: 0.75rem; white-space: nowrap; }
+
+  .tag--project {
+    font: inherit;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #F4F4EE;
+    padding: 2px 7px 3px;
+  }
+
+  .tag--project:hover { background: var(--blue); border-color: var(--blue); }
+  .f2__rail { position: absolute; left: var(--pad); top: 10px; bottom: 10px; width: 3px; background: var(--line); }
+  .is-overdue .f2__rail { background: var(--red); }
+  .is-overdue { background: var(--red-wash); }
+  .is-overdue:hover { background: #F4E0DC; }
+
+  .f2__id { display: block; font-family: var(--font-display); font-size: 0.6875rem; letter-spacing: 0.08em; color: var(--ink-3); }
+  .f2__title { display: block; font-weight: 600; font-size: 0.8125rem; line-height: 1.35; margin-top: 1px; }
+  .f2__tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+
+  .f2__date { display: block; font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem; }
+  .f2__left { display: block; font-size: 0.6875rem; }
+  .nowrap { white-space: nowrap; }
+
+</style>

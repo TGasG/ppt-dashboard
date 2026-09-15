@@ -1,0 +1,152 @@
+---
+import { traceStages, traceKpi } from '../../data/material';
+import { pct, num, rupiahJuta, rupiahMiliar } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+import Kpi from '../ui/Kpi.astro';
+
+const base = traceStages[0].value;
+
+const stages = traceStages.map((s, i) => {
+  const prev = i === 0 ? null : traceStages[i - 1].value;
+  const loss = prev === null ? 0 : ((prev - s.value) / prev) * 100;
+  return {
+    ...s,
+    loss,
+    lossValue: prev === null ? 0 : prev - s.value,
+    width: (s.value / base) * 100,
+    prevWidth: prev === null ? (s.value / base) * 100 : (prev / base) * 100,
+  };
+});
+
+const worst = stages.reduce((a, b) => (b.loss > a.loss ? b : a), stages[0]);
+const anomalyDelta = traceKpi.sensorAnomalies7d - traceKpi.sensorAnomaliesPrev7d;
+---
+
+<Panel
+  id="C1"
+  title="Jejak material: pesan sampai terpasang"
+  question="Di tahap mana material hilang?"
+  source="ERP procurement dan inventory, sensor RFID gerbang, timbangan kendaraan, aplikasi serah terima"
+  freshness="5 menit (aliran sensor)"
+  aggregate
+>
+  <div class="kpi-row c1-kpi">
+    <Kpi
+      label="Selisih gudang ke lokasi"
+      value={pct(traceKpi.warehouseToSiteVariance)}
+      tone="merah"
+      note="target 12 bulan ≤ 2%"
+    />
+    <Kpi
+      label="Nilai material tidak terlacak"
+      value={rupiahJuta(traceKpi.untrackedValue).replace('Rp ', '')}
+      tone="merah"
+      note="30 hari terakhir, seluruh lokasi"
+    />
+    <Kpi
+      label="Anomali sensor 7 hari"
+      value={num(traceKpi.sensorAnomalies7d)}
+      tone="kuning"
+      note={`${anomalyDelta > 0 ? 'naik' : 'turun'} ${Math.abs(anomalyDelta)} dibanding pekan sebelumnya`}
+    />
+  </div>
+
+  <ol class="funnel">
+    {
+      stages.map((s, i) => (
+        <li class={`stage ${s === worst ? 'stage--worst' : ''}`}>
+          <div class="stage__head">
+            <span class="stage__step" aria-hidden="true">{i + 1}</span>
+            <span class="stage__label">{s.label}</span>
+            <span class="stage__value num">{rupiahMiliar(s.value)}</span>
+          </div>
+
+          <div
+            class="stage__bar"
+            data-tip={`${s.label}\nNilai\t${rupiahMiliar(s.value)}${i > 0 ? `\nSusut\t${pct(s.loss)} (${rupiahMiliar(s.lossValue)})` : ''}`}
+          >
+            <span class="stage__fill" style={`width:${s.width}%`} />
+            {i > 0 && (
+              <span class="stage__loss" style={`left:${s.width}%; width:${s.prevWidth - s.width}%`} />
+            )}
+          </div>
+
+          {i > 0 && (
+            <div class="stage__delta">
+              <span class={`stage__pct num ${s === worst ? 't-red' : 't-amber'}`}>−{pct(s.loss)}</span>
+              <span class="stage__lossval">{rupiahMiliar(s.lossValue)} susut dari tahap sebelumnya</span>
+              {s.note && <span class="stage__note">{s.note}</span>}
+            </div>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+
+  <p class="c1-callout">
+    <span class="tag tag--anomaly">Susut terbesar</span>
+    <span>
+      <strong>Keluar gudang → tercatat terpasang</strong> kehilangan {pct(worst.loss)} senilai{' '}
+      {rupiahMiliar(worst.lossValue)} dalam 30 hari. Ini titik yang paling dicurigai berdasarkan temuan audit internal.
+    </span>
+  </p>
+
+  <p class="c1-def">
+    <strong>Definisi anomali sensor:</strong> kendaraan terdeteksi keluar gerbang proyek membawa muatan tanpa dokumen
+    serah terima yang cocok dalam ERP, atau selisih timbangan masuk-keluar melebihi 3%.
+  </p>
+</Panel>
+
+<style>
+  .c1-kpi { grid-template-columns: repeat(3, 1fr); margin-bottom: 18px; }
+
+  .funnel { list-style: none; margin: 0; padding: 0; display: grid; gap: 13px; }
+
+  .stage { padding-left: 10px; border-left: 3px solid var(--line); }
+  .stage--worst { border-left-color: var(--red); }
+
+  .stage__head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 5px; }
+
+  .stage__step {
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--ink-3);
+    border: 1px solid var(--line);
+    padding: 0 5px;
+    align-self: center;
+  }
+
+  .stage__label { font-family: var(--font-display); font-weight: 600; font-size: 1rem; }
+  .stage__value { margin-left: auto; font-size: 1.0625rem; }
+
+  .stage__bar { position: relative; height: 20px; background: var(--concrete); border: 1px solid var(--line-soft); }
+  .stage__fill { position: absolute; inset: 0 auto 0 0; background: var(--ink); }
+
+  /* bagian yang hilang dibanding tahap sebelumnya, bertekstur agar terbaca tanpa warna */
+  .stage__loss {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background-image: repeating-linear-gradient(135deg, var(--red) 0 2px, #F0DAD6 2px 5px);
+  }
+
+  .stage__delta { display: flex; align-items: baseline; gap: 9px; margin-top: 5px; flex-wrap: wrap; }
+  .stage__pct { font-size: 1rem; }
+  .stage__lossval { font-size: 0.6875rem; color: var(--ink-2); }
+  .stage__note { font-size: 0.6875rem; color: var(--ink-3); flex: 1 1 22ch; min-width: 0; }
+
+  .c1-callout {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 18px 0 0;
+    padding: 11px 13px;
+    background: var(--red-wash);
+    border-left: 3px solid var(--red);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+
+  .c1-def { margin: 12px 0 0; font-size: 0.6875rem; color: var(--ink-3); line-height: 1.45; }
+</style>

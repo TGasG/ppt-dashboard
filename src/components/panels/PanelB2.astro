@@ -1,0 +1,173 @@
+---
+import { budgetRows, reworkRow, costKpi } from '../../data/portfolio';
+import { rupiahMiliar, pct, ratio, num } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+import Kpi from '../ui/Kpi.astro';
+import Legend from '../ui/Legend.astro';
+
+const scaleMax = Math.max(...budgetRows.flatMap((r) => [r.budget, r.actual])) * 1.04;
+const eacGap = costKpi.eac - costKpi.bac;
+
+const rows = budgetRows.map((r) => {
+  const over = r.actual > r.budget;
+  return {
+    ...r,
+    over,
+    deviation: ((r.actual - r.budget) / r.budget) * 100,
+    budgetW: (r.budget / scaleMax) * 100,
+    actualW: (r.actual / scaleMax) * 100,
+  };
+});
+
+const reworkScale = Math.max(reworkRow.budget, reworkRow.actual) * 1.04;
+---
+
+<Panel
+  id="B2"
+  title="Anggaran vs realisasi"
+  question="Ke mana uang mengalir dan berapa proyeksi selisihnya?"
+  source="ERP modul keuangan, tautan ke aplikasi inspeksi"
+  freshness="harian"
+  aggregate
+>
+  <div class="kpi-row b2-kpi">
+    <Kpi label="CPI portofolio" value={ratio(costKpi.cpi)} tone="kuning" note="Earned Value / Actual Cost" />
+    <Kpi
+      label="Proyeksi selisih (EAC − BAC)"
+      value={`+${rupiahMiliar(eacGap).replace('Rp ', '')}`}
+      tone="merah"
+      note={`EAC ${rupiahMiliar(costKpi.eac)} atas BAC ${rupiahMiliar(costKpi.bac)}`}
+    />
+    <Kpi
+      label="Biaya perbaikan ulang"
+      value={rupiahMiliar(costKpi.reworkCost).replace('Rp ', '')}
+      tone="merah"
+      note={`tahun lalu ${rupiahMiliar(costKpi.reworkLastYear)} · target turun 50%`}
+    />
+  </div>
+
+  <div class="bars">
+    {
+      rows.map((r) => (
+        <div class="row">
+          <div class="row__head">
+            <span class="row__label">{r.label}</span>
+            <span class="row__nums">
+              <span class="num row__actual">{rupiahMiliar(r.actual)}</span>
+              <span class="row__of">dari {rupiahMiliar(r.budget)}</span>
+              <span class={`row__dev num ${r.over ? 't-red' : 't-green'}`}>
+                {r.over ? '+' : '−'}{pct(Math.abs(r.deviation), 1)}
+              </span>
+            </span>
+          </div>
+
+          <div class="bar" data-tip={`${r.label}\nAnggaran\t${rupiahMiliar(r.budget)}\nRealisasi\t${rupiahMiliar(r.actual)}\nSelisih\t${r.over ? '+' : '−'}${rupiahMiliar(Math.abs(r.actual - r.budget))}`}>
+            <span class="bar__budget" style={`width:${r.budgetW}%`} />
+            <span class={`bar__actual ${r.over ? 'is-over' : 'is-ok'}`} style={`width:${r.actualW}%`} />
+            <span class="bar__mark" style={`left:${r.budgetW}%`} />
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="rework">
+    <div class="rework__head">
+      <span class="rework__label">
+        {reworkRow.label}
+        <span class="tag tag--red">Pemborosan</span>
+      </span>
+      <span class="row__nums">
+        <span class="num row__actual t-red">{rupiahMiliar(reworkRow.actual)}</span>
+        <span class="row__of">alokasi {rupiahMiliar(reworkRow.budget)}</span>
+        <span class="row__dev num t-red">+{pct(((reworkRow.actual - reworkRow.budget) / reworkRow.budget) * 100, 0)}</span>
+      </span>
+    </div>
+    <div class="bar" data-tip={`Perbaikan ulang\nAlokasi\t${rupiahMiliar(reworkRow.budget)}\nRealisasi\t${rupiahMiliar(reworkRow.actual)}`}>
+      <span class="bar__budget" style={`width:${(reworkRow.budget / reworkScale) * 100}%`} />
+      <span class="bar__actual is-over" style={`width:${(reworkRow.actual / reworkScale) * 100}%`} />
+      <span class="bar__mark" style={`left:${(reworkRow.budget / reworkScale) * 100}%`} />
+    </div>
+    <p class="rework__note">
+      Ditampilkan terpisah karena seluruhnya merupakan pemborosan yang seharusnya bisa dicegah.
+      Angka berasal dari kode biaya “perbaikan temuan” pada ERP yang ditautkan ke nomor temuan inspeksi.
+    </p>
+  </div>
+
+  <Legend
+    class="b2-legend"
+    items={[
+      { label: 'Anggaran', color: '#C3C3B8' },
+      { label: 'Realisasi terkendali', color: 'var(--green)' },
+      { label: 'Realisasi melampaui anggaran', color: 'var(--red)' },
+    ]}
+  />
+</Panel>
+
+<style>
+  .b2-kpi { grid-template-columns: repeat(3, 1fr); margin-bottom: 18px; }
+
+  .bars { display: grid; gap: 15px; }
+
+  .row__head, .rework__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  .row__label, .rework__label {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.0625rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .row__nums { display: inline-flex; align-items: baseline; gap: 9px; }
+  .row__actual { font-size: 1.0625rem; }
+  .row__of { font-size: 0.6875rem; color: var(--ink-3); }
+  .row__dev { font-size: 0.9375rem; min-width: 52px; text-align: right; }
+
+  .bar {
+    position: relative;
+    height: 26px;
+    background: var(--concrete);
+    border: 1px solid var(--line-soft);
+  }
+
+  .bar__budget { position: absolute; inset: 0 auto 0 0; background: #C3C3B8; }
+
+  .bar__actual {
+    position: absolute;
+    top: 5px;
+    bottom: 5px;
+    left: 0;
+  }
+
+  .bar__actual.is-ok { background: var(--green); }
+  .bar__actual.is-over { background: var(--red); }
+
+  /* penanda batas anggaran — penanda kedua selain warna */
+  .bar__mark {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--ink);
+  }
+
+  .rework {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 2px solid var(--line);
+  }
+
+  .rework__note { margin: 9px 0 0; font-size: 0.6875rem; color: var(--ink-3); line-height: 1.45; max-width: 68ch; }
+
+  .b2-legend { margin-top: 16px; padding-top: 11px; border-top: 1px solid var(--line-soft); }
+</style>

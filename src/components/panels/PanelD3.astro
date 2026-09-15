@@ -1,0 +1,121 @@
+---
+import { safetyKpi } from '../../data/quality';
+import { shortName } from '../../data/projects';
+import { pct, num } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+
+const meters = [
+  {
+    label: 'Kehadiran pekerja',
+    value: safetyKpi.attendance,
+    target: safetyKpi.attendancePlan,
+    suffix: '%',
+    formula: 'pekerja terdeteksi masuk / rencana tenaga kerja harian',
+  },
+  {
+    label: 'Utilisasi alat berat',
+    value: safetyKpi.equipmentUtilisation,
+    target: safetyKpi.equipmentTarget,
+    suffix: '%',
+    formula: 'jam mesin aktif / jam tersedia',
+  },
+];
+---
+
+<Panel
+  id="D3"
+  title="Keselamatan dan sumber daya"
+  question="Apakah tenaga kerja dan alat dipakai secara efisien, dan apakah lokasi aman?"
+  source="Sensor keluar-masuk proyek, telematika alat berat, laporan HSE"
+  freshness="1 jam"
+  aggregate
+>
+  <div class="meters">
+    {
+      meters.map((m) => {
+        const short = m.value < m.target;
+        return (
+          <div class="meter">
+            <div class="meter__head">
+              <span class="kpi__label">{m.label}</span>
+              <span class="meter__nums">
+                <span class={`num meter__value ${short ? 't-amber' : 't-green'}`}>{pct(m.value)}</span>
+                <span class="meter__target">target {m.target}%</span>
+              </span>
+            </div>
+            <div class="meter__track" data-tip={`${m.label}\nAktual\t${pct(m.value)}\nTarget\t${m.target}%\nRumus\t${m.formula}`}>
+              <span class={`meter__fill ${short ? 'is-short' : 'is-ok'}`} style={`width:${m.value}%`} />
+              <span class="meter__marker" style={`left:${m.target}%`} />
+            </div>
+            <span class="meter__formula">{m.formula}</span>
+          </div>
+        );
+      })
+    }
+  </div>
+
+  <div class="kpi-row d3-kpi">
+    <div class="kpi">
+      <span class="kpi__label">Insiden K3 bulan berjalan</span>
+      <div class="kpi__line">
+        <span class="kpi__value t-amber">{num(safetyKpi.incidentsThisMonth)}</span>
+        <span class="kpi__against">bulan lalu {safetyKpi.incidentsLastMonth}</span>
+      </div>
+      <p class="kpi__note">Seluruhnya berkategori ringan, tidak ada hari kerja hilang</p>
+    </div>
+    <div class="kpi">
+      <span class="kpi__label">Hari tanpa insiden berat</span>
+      <div class="kpi__line">
+        <span class="kpi__value t-green">{num(safetyKpi.daysWithoutSevereIncident)}</span>
+        <span class="kpi__unit">hari</span>
+      </div>
+      <p class="kpi__note">Rekor tertinggi sejak pencatatan dimulai</p>
+    </div>
+  </div>
+
+  <p class="idle">
+    <span class="tag tag--blue">Alat paling menganggur</span>
+    <span>
+      <strong>{shortName[safetyKpi.idlestSite.projectId]}</strong> — utilisasi alat berat hanya{' '}
+      <strong class="num">{pct(safetyKpi.idlestSite.utilisation, 0)}</strong>. Kandidat pemindahan alat ke lokasi
+      dengan pekerjaan tertunda.
+    </span>
+  </p>
+
+  <p class="rationale">
+    Keselamatan kerja tidak disebut eksplisit dalam studi kasus, tetapi merupakan risiko melekat pada proyek
+    konstruksi dan berdampak langsung pada biaya serta reputasi, sehingga dimasukkan ke dalam pemantauan direksi.
+  </p>
+</Panel>
+
+<style>
+  .meters { display: grid; gap: 16px; }
+
+  .meter__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
+  .meter__nums { display: inline-flex; align-items: baseline; gap: 8px; }
+  .meter__value { font-family: var(--font-display); font-weight: 600; font-size: 1.75rem; line-height: 1; }
+  .meter__target { font-size: 0.6875rem; color: var(--ink-3); }
+
+  .meter__track { position: relative; height: 16px; background: var(--concrete); border: 1px solid var(--line-soft); }
+  .meter__fill { position: absolute; inset: 0 auto 0 0; }
+  .meter__fill.is-ok { background: var(--green); }
+  .meter__fill.is-short { background: var(--amber); }
+  .meter__marker { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); }
+  .meter__formula { display: block; margin-top: 5px; font-size: 0.625rem; color: var(--ink-3); }
+
+  .d3-kpi { grid-template-columns: repeat(2, 1fr); margin-top: 18px; }
+
+  .idle {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 16px 0 0;
+    padding: 10px 12px;
+    background: var(--blue-wash);
+    border-left: 3px solid var(--blue);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+
+  .rationale { margin: 12px 0 0; font-size: 0.6875rem; color: var(--ink-3); line-height: 1.45; }
+</style>

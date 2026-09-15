@@ -1,0 +1,94 @@
+---
+import { pct } from '../../lib/format';
+
+interface Props {
+  actual: number;
+  plan: number;
+  /** Warna pita selisih bila aktual tertinggal dari rencana. */
+  gapColor: string;
+  height?: number;
+  showLabels?: boolean;
+}
+
+const { actual, plan, gapColor, height = 12, showLabels = true } = Astro.props;
+const behind = actual < plan;
+const lo = Math.min(actual, plan);
+const hi = Math.max(actual, plan);
+---
+
+<div class="track-wrap">
+  <div
+    class="track"
+    style={`--h:${height}px; --actual:${actual}%; --lo:${lo}%; --gap-w:${hi - lo}%; --gap-c:${gapColor}; --plan:${plan}%`}
+    role="img"
+    aria-label={`Progres aktual ${pct(actual)}, rencana ${pct(plan)}`}
+  >
+    <div class="track__fill"></div>
+    {(hi - lo) > 0.05 && <div class={`track__gap ${behind ? 'track__gap--behind' : 'track__gap--ahead'}`} />}
+    <div class="track__plan"></div>
+  </div>
+  {
+    showLabels && (
+      <div class="track__labels">
+        <span class="track__actual num">{pct(actual)}</span>
+        <span class="track__planlabel">rencana {pct(plan)}</span>
+      </div>
+    )
+  }
+</div>
+
+<style>
+  .track-wrap { min-width: 0; }
+
+  .track {
+    position: relative;
+    height: var(--h);
+    background: var(--concrete);
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+
+  .track__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--actual);
+    background: var(--ink);
+  }
+
+  /* Pita selisih antara aktual dan rencana, bertekstur agar terbaca tanpa warna */
+  .track__gap {
+    position: absolute;
+    inset: 0 auto 0 var(--lo);
+    width: var(--gap-w);
+    background-image: repeating-linear-gradient(
+      135deg,
+      var(--gap-c) 0 2px,
+      transparent 2px 5px
+    );
+    opacity: 0.85;
+  }
+
+  .track__gap--ahead { opacity: 0.5; }
+
+  /* Penanda posisi rencana */
+  .track__plan {
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    left: var(--plan);
+    width: 2px;
+    margin-left: -1px;
+    background: var(--ink);
+  }
+
+  .track__labels {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 5px;
+  }
+
+  .track__actual { font-size: 1.125rem; }
+  .track__planlabel { font-size: 0.6875rem; color: var(--ink-3); }
+</style>

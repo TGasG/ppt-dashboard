@@ -1,11 +1,122 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
+import TopBar from '../components/ui/TopBar.astro';
+import FilterBar from '../components/ui/FilterBar.astro';
+import SectionHead from '../components/ui/SectionHead.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import PanelA from '../components/panels/PanelA.astro';
+import PanelB1 from '../components/panels/PanelB1.astro';
+import PanelB2 from '../components/panels/PanelB2.astro';
+import PanelC1 from '../components/panels/PanelC1.astro';
+import PanelC2 from '../components/panels/PanelC2.astro';
+import PanelD1 from '../components/panels/PanelD1.astro';
+import PanelD2 from '../components/panels/PanelD2.astro';
+import PanelD3 from '../components/panels/PanelD3.astro';
+import PanelE1 from '../components/panels/PanelE1.astro';
+import PanelE2 from '../components/panels/PanelE2.astro';
+import PanelE3 from '../components/panels/PanelE3.astro';
+import PanelF1 from '../components/panels/PanelF1.astro';
+import PanelF2 from '../components/panels/PanelF2.astro';
 ---
 
-<Layout>
-	<Welcome />
+<Layout
+  title="Papan Direksi — Dashboard Progres Proyek | PT Pembangunan Property"
+  description="Satu tampilan tunggal bagi Dewan Direksi untuk memantau seluruh portofolio proyek konstruksi PT Pembangunan Property secara langsung."
+>
+  <TopBar />
+  <FilterBar />
+
+  <main class="dash" id="papan">
+    <PanelA />
+
+    <SectionHead letter="B" title="Jadwal dan biaya" lead="Apakah portofolio selesai tepat waktu dan sesuai anggaran?" />
+    <div class="row row--2 row--b">
+      <PanelB1 />
+      <PanelB2 />
+    </div>
+
+    <SectionHead letter="C" title="Material dan rantai pasok" lead="Di mana material hilang, dan di mana pekerjaan terancam berhenti?" />
+    <div class="row row--2">
+      <PanelC1 />
+      <PanelC2 />
+    </div>
+
+    <SectionHead letter="D" title="Mutu dan tindak lanjut" lead="Apakah mutu membaik, dan apakah temuan ditindaklanjuti tepat waktu?" />
+    <div class="row row--3">
+      <PanelD1 />
+      <PanelD2 />
+      <PanelD3 />
+    </div>
+
+    <SectionHead letter="E" title="Hubungan masyarakat" lead="Bagaimana persepsi masyarakat, dan apakah janji perusahaan dipenuhi?" />
+    <div class="row row--3">
+      <PanelE1 />
+      <PanelE2 />
+      <PanelE3 />
+    </div>
+
+    <SectionHead letter="F" title="Peringatan dini" lead="Apa yang akan bermasalah, dan apa yang harus diputuskan minggu ini?" />
+    <div class="row row--2">
+      <PanelF1 />
+      <PanelF2 />
+    </div>
+  </main>
+
+  <footer class="foot">
+    <div class="foot__inner">
+      <p class="foot__scope">
+        <strong>Dashboard ini bersifat baca dan pantau.</strong> Sistem tidak menggantikan ERP, tidak dipakai untuk
+        menyetujui transaksi, dan tidak menjadi sumber kebenaran data. Seluruh angka berasal dari sistem sumber;
+        penyesuaian data hanya boleh dilakukan di sistem sumbernya.
+      </p>
+      <p class="foot__meta">
+        Papan Direksi v1.0 · Digital Transformation Office · Ambang batas dan bobot indeks dikelola Divisi Analitik ·
+        Setiap akses dan perubahan ambang tercatat pada jejak audit
+      </p>
+      <p class="foot__dummy">Seluruh angka pada tampilan ini adalah data contoh untuk keperluan prototipe.</p>
+    </div>
+  </footer>
 </Layout>
+
+<script>
+  import '../scripts/dashboard';
+</script>
+
+<style>
+  .dash {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: var(--pad);
+    display: grid;
+    gap: 16px;
+  }
+
+  .row { display: grid; gap: 16px; align-items: start; }
+  .row--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .row--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  /* B1 memuat grafik lebar, B2 memuat batang pendek */
+  .row--b { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+
+  .foot { border-top: 1px solid var(--line); background: var(--panel); margin-top: 10px; }
+
+  .foot__inner {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 18px var(--pad) 26px;
+    display: grid;
+    gap: 7px;
+  }
+
+  .foot__scope { margin: 0; font-size: 0.75rem; color: var(--ink-2); max-width: 96ch; line-height: 1.55; }
+  .foot__meta { margin: 0; font-size: 0.6875rem; color: var(--ink-3); }
+  .foot__dummy { margin: 4px 0 0; font-size: 0.6875rem; color: var(--ink-3); font-style: italic; }
+
+  @media (max-width: 1400px) {
+    .row--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 1080px) {
+    .row--2, .row--3, .row--b { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>

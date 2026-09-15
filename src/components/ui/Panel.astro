@@ -1,0 +1,73 @@
+---
+interface Props {
+  id: string;
+  title: string;
+  question?: string;
+  source?: string;
+  freshness?: string;
+  /** Hilangkan padding badan panel untuk tabel dan matriks yang menempel tepi. */
+  flush?: boolean;
+  /**
+   * Panel yang menyajikan angka agregat portofolio dan tidak dapat dipecah
+   * per proyek oleh penyaring global. Diberi keterangan saat penyaring aktif.
+   */
+  aggregate?: boolean;
+  class?: string;
+}
+
+const {
+  id, title, question, source, freshness,
+  flush = false, aggregate = false, class: className = '',
+} = Astro.props;
+---
+
+<section class={`panel ${className}`} aria-labelledby={`panel-${id}-title`}>
+  <header class="panel__head">
+    <div class="panel__heading">
+      <div class="panel__heading-row">
+        <span class="panel__id" aria-hidden="true">{id}</span>
+        <h2 class="panel__title" id={`panel-${id}-title`}>{title}</h2>
+      </div>
+      {question && <p class="panel__question">{question}</p>}
+    </div>
+    <div class="panel__headend">
+      {aggregate && (
+        <span class="panel__agg" data-aggregate-note hidden>
+          Angka seluruh portofolio
+        </span>
+      )}
+      <slot name="head" />
+    </div>
+  </header>
+
+  <div class={`panel__body ${flush ? 'panel__body--flush' : ''}`}>
+    <slot />
+  </div>
+
+  {
+    (source || freshness) && (
+      <footer class="panel__foot">
+        {source && <span>Sumber: {source}</span>}
+        {freshness && <span class="panel__fresh">Kesegaran: {freshness}</span>}
+      </footer>
+    )
+  }
+</section>
+
+<style>
+  .panel__heading { min-width: 0; }
+  .panel__headend { display: flex; align-items: center; gap: 10px; flex: none; }
+
+  .panel__agg {
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--amber-ink);
+    background: var(--amber-wash);
+    border: 1px solid #E8D2A6;
+    padding: 2px 7px 3px;
+    white-space: nowrap;
+  }
+  .panel__heading-row { display: flex; align-items: center; gap: 9px; }
+  .panel__fresh { white-space: nowrap; }
+</style>

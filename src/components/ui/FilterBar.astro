@@ -1,0 +1,89 @@
+---
+const filters = [
+  { key: 'semua', label: 'Semua' },
+  { key: 'Perumahan', label: 'Perumahan' },
+  { key: 'Gedung', label: 'Gedung' },
+  { key: 'Infrastruktur', label: 'Infrastruktur' },
+  { key: 'perhatian', label: 'Perlu perhatian' },
+];
+---
+
+<div class="filterbar no-print">
+  <div class="filterbar__inner">
+    <span class="filterbar__label eyebrow">Penyaring global</span>
+
+    <div class="filterbar__group" role="group" aria-label="Penyaring portofolio">
+      {
+        filters.map((f) => (
+          <button
+            type="button"
+            class="chipbtn"
+            data-filter={f.key}
+            aria-pressed={f.key === 'semua' ? 'true' : 'false'}
+          >
+            {f.label}
+            <span class="chipbtn__n num" data-filter-count={f.key}></span>
+          </button>
+        ))
+      }
+    </div>
+
+    <p class="filterbar__scope" data-filter-scope>
+      Menampilkan seluruh portofolio
+    </p>
+  </div>
+</div>
+
+<style>
+  .filterbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--concrete);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .filterbar__inner {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 9px var(--pad) 10px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .filterbar__label { flex: none; }
+  .filterbar__group { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+
+  .chipbtn {
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 5px 12px 6px;
+    background: var(--panel);
+    border: 0;
+    color: var(--ink-2);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .chipbtn:hover { background: #fff; color: var(--ink); }
+
+  .chipbtn[aria-pressed='true'] {
+    background: var(--ink);
+    color: #F4F4EE;
+  }
+
+  .chipbtn__n { font-size: 0.6875rem; opacity: 0.65; }
+  .chipbtn[aria-pressed='true'] .chipbtn__n { opacity: 0.8; }
+
+  .filterbar__scope { margin: 0 0 0 auto; font-size: 0.6875rem; color: var(--ink-3); }
+
+  @media (max-width: 720px) {
+    .filterbar__group { flex-wrap: wrap; }
+    .filterbar__scope { margin-left: 0; }
+  }
+</style>

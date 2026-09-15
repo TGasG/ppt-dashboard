@@ -1,0 +1,134 @@
+---
+import { socialRisk } from '../../data/community';
+import { projects, shortName } from '../../data/projects';
+import { num } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+
+const byId = new Map(projects.map((p) => [p.id, p]));
+const rows = [...socialRisk].sort((a, b) => b.index - a.index);
+
+const tone = (v: number) => (v >= 70 ? 'merah' : v >= 50 ? 'kuning' : 'hijau');
+const toneColor: Record<string, string> = { merah: 'var(--red)', kuning: 'var(--amber)', hijau: 'var(--green)' };
+const toneText: Record<string, string> = { merah: 'Berpotensi bergejolak', kuning: 'Perlu perhatian', hijau: 'Terkendali' };
+
+const weights = [
+  { label: 'Sentimen negatif', w: 0.35, key: 'sentiment' as const },
+  { label: 'Aduan belum terjawab', w: 0.25, key: 'unanswered' as const },
+  { label: 'Keterlambatan waktu tanggap', w: 0.2, key: 'responseDelay' as const },
+  { label: 'Riwayat insiden 12 bulan', w: 0.2, key: 'incidents' as const },
+];
+---
+
+<Panel
+  id="E2"
+  title="Indeks risiko sosial"
+  question="Lokasi mana yang berpotensi bergejolak?"
+  source="Social CRM, basis pengetahuan penanganan konflik (CKMS)"
+  freshness="1 jam"
+  flush
+>
+  <div class="table-scroll">
+  <table class="table e2">
+    <caption class="sr-only">Peringkat lokasi berdasarkan indeks risiko sosial 0–100</caption>
+    <thead>
+      <tr>
+        <th scope="col">Lokasi proyek</th>
+        <th scope="col" class="e2__idxcol">Indeks 0–100</th>
+        <th scope="col" class="ta-r">Aduan belum dijawab</th>
+        <th scope="col">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        rows.map((r) => {
+          const p = byId.get(r.projectId)!;
+          const t = tone(r.index);
+          return (
+            <tr data-project-row={r.projectId}>
+              <th scope="row" class="e2__name">
+                <button type="button" class="linkish" data-project-open={r.projectId}>{shortName[r.projectId]}</button>
+                <span class="e2__loc">{p.location}</span>
+              </th>
+              <td>
+                <div
+                  class="e2__meter"
+                  data-tip={[
+                    `${shortName[r.projectId]} — indeks ${r.index}`,
+                    ...weights.map((w) => `${w.label} (${w.w * 100}%)\t${r.components[w.key]}`),
+                  ].join('\n')}
+                >
+                  <span class="e2__bar">
+                    <span class="e2__fill" style={`width:${r.index}%; background:${toneColor[t]}`} />
+                  </span>
+                  <span class="num e2__score">{r.index}</span>
+                </div>
+              </td>
+              <td class={`n ${r.unanswered >= 15 ? 't-red' : r.unanswered >= 8 ? 't-amber' : ''}`}>{num(r.unanswered)}</td>
+              <td>
+                <span class={`tag tag--${t === 'merah' ? 'red' : t === 'kuning' ? 'amber' : 'green'}`}>{toneText[t]}</span>
+              </td>
+            </tr>
+          );
+        })
+      }
+    </tbody>
+  </table>
+  </div>
+
+  <div class="formula">
+    <span class="eyebrow">Rumus indeks</span>
+    <ul class="formula__list">
+      {
+        weights.map((w) => (
+          <li class="formula__item">
+            <span class="formula__w num">{String(w.w).replace('.', ',')}</span>
+            <span class="formula__label">× skor {w.label.toLowerCase()}</span>
+          </li>
+        ))
+      }
+    </ul>
+    <p class="formula__note">
+      Setiap komponen dinormalisasi ke skala 0–100. Bobot dapat disesuaikan oleh Divisi Analitik dan setiap
+      perubahan tercatat pada jejak audit. Arahkan penunjuk ke batang indeks untuk melihat rincian komponen.
+    </p>
+  </div>
+</Panel>
+
+<style>
+  .e2 { font-size: 0.8125rem; min-width: 430px; }
+  .e2 th, .e2 td { padding-left: var(--pad); }
+  .e2 th:last-child, .e2 td:last-child { padding-right: var(--pad); }
+  .e2 th:not(:first-child), .e2 td:not(:first-child) { padding-left: 10px; }
+
+  .e2__name { font-weight: 600; white-space: nowrap; }
+  .e2__loc { display: block; font-weight: 400; font-size: 0.6875rem; color: var(--ink-3); }
+  .e2__idxcol { width: 30%; }
+
+  .e2__meter { display: flex; align-items: center; gap: 9px; }
+  .e2__bar { flex: 1; height: 12px; background: var(--concrete); border: 1px solid var(--line-soft); min-width: 60px; }
+  .e2__fill { display: block; height: 100%; }
+  .e2__score { font-size: 1.0625rem; min-width: 24px; text-align: right; }
+
+  .ta-r { text-align: right; }
+  .e2 .tag { white-space: normal; }
+
+  .formula { padding: 14px var(--pad) 4px; border-top: 1px solid var(--line-soft); }
+  .formula__list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; }
+  .formula__item { display: flex; gap: 8px; align-items: baseline; font-size: 0.75rem; }
+  .formula__w { font-size: 0.9375rem; min-width: 30px; }
+  .formula__label { color: var(--ink-2); }
+  .formula__note { margin: 10px 0 0; font-size: 0.6875rem; color: var(--ink-3); line-height: 1.45; }
+
+  .linkish {
+    font: inherit;
+    font-weight: 600;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--blue-ink);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .linkish:hover { color: var(--ink); }
+</style>

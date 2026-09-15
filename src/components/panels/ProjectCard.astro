@@ -1,0 +1,146 @@
+---
+import type { Project } from '../../data/projects';
+import { ragOf, ragLabel, ragColor, isAnomali } from '../../lib/rag';
+import { rupiahMiliar, ratio, pct } from '../../lib/format';
+import ProgressTrack from '../ui/ProgressTrack.astro';
+
+interface Props { project: Project }
+const { project: p } = Astro.props;
+
+const rag = ragOf(p);
+const anomali = isAnomali(p);
+---
+
+<button
+  type="button"
+  class="card"
+  data-project-card
+  data-id={p.id}
+  data-category={p.category}
+  data-rag={rag}
+  style={`--rag:${ragColor[rag]}`}
+  aria-haspopup="dialog"
+>
+  <span class="card__rail" aria-hidden="true"></span>
+
+  <span class="card__top">
+    <span class="card__id">{p.id}</span>
+    {anomali && <span class="tag tag--anomaly">Anomali</span>}
+  </span>
+
+  <span class="card__name display">{p.name}</span>
+  <span class="card__meta">{p.category} · {p.location}</span>
+
+  <span class="card__value num">{rupiahMiliar(p.contractValue)}</span>
+
+  <ProgressTrack actual={p.progressActual} plan={p.progressPlan} gapColor={ragColor[rag]} />
+
+  <span class="card__stats">
+    <span class="stat">
+      <span class="stat__k">SPI</span>
+      <span class={`stat__v num ${p.spi < 0.9 ? 't-red' : p.spi < 0.95 ? 't-amber' : ''}`}>{ratio(p.spi)}</span>
+    </span>
+    <span class="stat">
+      <span class="stat__k">CPI</span>
+      <span class={`stat__v num ${p.cpi < 0.92 ? 't-red' : p.cpi < 0.96 ? 't-amber' : ''}`}>{ratio(p.cpi)}</span>
+    </span>
+    <span class="stat">
+      <span class="stat__k">Selisih material</span>
+      <span class={`stat__v num ${p.materialVariance > 5 ? 't-red' : p.materialVariance > 2.5 ? 't-amber' : ''}`}>
+        {pct(p.materialVariance)}
+      </span>
+    </span>
+  </span>
+
+  <span class="card__status">
+    <span class="card__chip" aria-hidden="true"></span>
+    {ragLabel[rag]}
+    <span class="card__more">Rincian →</span>
+  </span>
+</button>
+
+<style>
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px 14px 11px 18px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    min-width: 0;
+    transition: background 120ms linear, border-color 120ms linear;
+  }
+
+  .card:hover { background: #fff; border-color: var(--ink-3); }
+  .card:hover .card__more { opacity: 1; }
+
+  .card__rail {
+    position: absolute;
+    inset: -1px auto -1px -1px;
+    width: var(--rail);
+    background: var(--rag);
+  }
+
+  .card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 18px; }
+
+  .card__id {
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+  }
+
+  .card__name {
+    font-size: 1.125rem;
+    line-height: 1.08;
+    /* nama panjang dipotong dua baris agar tinggi kartu seragam */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card__meta { font-size: 0.6875rem; color: var(--ink-3); margin-top: -4px; }
+  .card__value { font-size: 1.0625rem; color: var(--ink-2); }
+
+  .card__stats {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 2px 14px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line-soft);
+  }
+
+  .stat { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .stat__k { font-size: 0.625rem; color: var(--ink-3); letter-spacing: 0.03em; }
+  .stat__v { font-size: 1rem; }
+
+  .card__status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--ink-2);
+    letter-spacing: 0.02em;
+  }
+
+  .card__chip { inline-size: 9px; block-size: 9px; background: var(--rag); flex: none; }
+
+  .card__more {
+    margin-left: auto;
+    font-weight: 500;
+    color: var(--ink-3);
+    opacity: 0;
+    transition: opacity 120ms linear;
+  }
+
+  @media (hover: none) { .card__more { opacity: 1; } }
+</style>

@@ -1,0 +1,35 @@
+---
+interface Props {
+  label: string;
+  value: string;
+  unit?: string;
+  note?: string;
+  tone?: 'netral' | 'merah' | 'kuning' | 'hijau' | 'biru';
+  /** Teks pembanding kecil di sebelah nilai, mis. "target 3" */
+  against?: string;
+}
+
+const { label, value, unit, note, tone = 'netral', against } = Astro.props;
+
+const toneVar: Record<string, string> = {
+  netral: 'var(--ink)',
+  merah: 'var(--red-ink)',
+  kuning: 'var(--amber-ink)',
+  hijau: 'var(--green-ink)',
+  biru: 'var(--blue-ink)',
+};
+---
+
+<div class="kpi">
+  <span class="kpi__label">{label}</span>
+  <div class="kpi__line">
+    <span class="kpi__value" style={`color:${toneVar[tone]}`}>{value}</span>
+    {unit && <span class="kpi__unit">{unit}</span>}
+    {against && <span class="kpi__against">{against}</span>}
+  </div>
+  {note && <p class="kpi__note">{note}</p>}
+</div>
+
+<style>
+  .kpi__note { margin: 5px 0 0; }
+</style>

@@ -1,0 +1,153 @@
+---
+import type { Project } from '../../data/projects';
+import { ragOf, ragLabel, ragColor } from '../../lib/rag';
+import { rupiahMiliar, pct, num } from '../../lib/format';
+import { shortName } from '../../data/projects';
+
+interface Props { projects: Project[] }
+const { projects } = Astro.props;
+
+const byRag: Record<string, number> = { merah: 0, kuning: 0, hijau: 0 };
+for (const p of projects) byRag[ragOf(p)] += 1;
+
+const totalValue = projects.reduce((s, p) => s + p.contractValue, 0);
+const criticalValue = projects.filter((p) => ragOf(p) === 'merah').reduce((s, p) => s + p.contractValue, 0);
+const criticalShare = totalValue ? (criticalValue / totalValue) * 100 : 0;
+
+/**
+ * Seluruh proyek dirender berurut dari skor tertinggi; penyaring global cukup
+ * menyembunyikan yang tidak cocok dan menyisakan lima teratas. Cara ini
+ * menjaga gaya berlingkup Astro tetap berlaku, tidak seperti menyusun ulang
+ * markup di sisi klien.
+ */
+const byRisk = [...projects].sort((a, b) => b.riskScore - a.riskScore);
+const ragOrder = ['merah', 'kuning', 'hijau'] as const;
+const riskColor = (s: number) => (s >= 70 ? 'var(--red)' : s >= 50 ? 'var(--amber)' : 'var(--blue)');
+---
+
+<aside class="summary" aria-label="Ringkasan portofolio" aria-live="polite">
+  <div class="block">
+    <span class="eyebrow">Proyek aktif</span>
+    <p class="big num" data-sum="count">{num(projects.length)}</p>
+
+    <div class="stackbar" data-sum="stackbar" role="img" data-sum-label
+      aria-label={`${byRag.merah} kritis, ${byRag.kuning} waspada, ${byRag.hijau} sesuai rencana`}>
+      {
+        ragOrder.map((r) =>
+          byRag[r] > 0 ? (
+            <span class="stackbar__seg" data-seg={r} style={`flex:${byRag[r]}; background:${ragColor[r]}`} />
+          ) : (
+            <span class="stackbar__seg" data-seg={r} style={`flex:0; background:${ragColor[r]}`} hidden />
+          ),
+        )
+      }
+    </div>
+
+    <ul class="raglist">
+      {
+        ragOrder.map((r) => (
+          <li class="raglist__item">
+            <span class="raglist__chip" style={`background:${ragColor[r]}`} aria-hidden="true" />
+            <span class="raglist__label">{ragLabel[r]}</span>
+            <span class="raglist__n num" data-sum={`rag-${r}`}>{byRag[r]}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  <div class="block">
+    <span class="eyebrow">Nilai kontrak berjalan</span>
+    <p class="big num" data-sum="total">{rupiahMiliar(totalValue)}</p>
+    <p class="sub">
+      <span class="t-red num" data-sum="critical">{rupiahMiliar(criticalValue)}</span> berada di proyek kritis{' '}
+      <span class="muted">(<span data-sum="share">{pct(criticalShare, 1)}</span> portofolio)</span>
+    </p>
+    <div class="minibar" aria-hidden="true">
+      <span class="minibar__fill" data-sum="sharebar" style={`width:${criticalShare}%`}></span>
+    </div>
+  </div>
+
+  <div class="block block--grow">
+    <span class="eyebrow">Lima skor risiko tertinggi</span>
+    <ol class="risklist" data-sum="risklist">
+      {
+        byRisk.map((p) => (
+          <li class="risklist__item" data-risk-item={p.id}>
+            <button type="button" class="risklist__btn" data-project-open={p.id}>
+              <span class="risklist__name">{shortName[p.id] ?? p.name}</span>
+              <span class="risklist__bar" aria-hidden="true">
+                <span class="risklist__fill" style={`width:${p.riskScore}%; background:${riskColor(p.riskScore)}`} />
+              </span>
+              <span class="risklist__score num">{p.riskScore}</span>
+            </button>
+          </li>
+        ))
+      }
+    </ol>
+    <p class="foot muted">Skor di atas 70 memperkirakan keterlambatan lebih dari 30 hari.</p>
+  </div>
+</aside>
+
+<style>
+  .summary {
+    display: flex;
+    flex-direction: column;
+    background: var(--line-soft);
+    gap: 1px;
+    border-left: 1px solid var(--line);
+    min-width: 0;
+  }
+
+  .block { background: var(--panel); padding: 14px var(--pad) 16px; }
+  .block--grow { flex: 1; }
+
+  .big {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 2.5rem;
+    line-height: 0.9;
+    margin: 6px 0 10px;
+    letter-spacing: 0.01em;
+  }
+
+  .sub { margin: 4px 0 8px; font-size: 0.75rem; color: var(--ink-2); }
+
+  .stackbar { display: flex; height: 10px; gap: 1px; }
+  .stackbar__seg { display: block; }
+
+  .raglist { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 5px; }
+  .raglist__item { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; }
+  .raglist__chip { inline-size: 9px; block-size: 9px; flex: none; }
+  .raglist__label { color: var(--ink-2); }
+  .raglist__n { margin-left: auto; font-size: 1rem; }
+
+  .minibar { height: 6px; background: var(--concrete); border: 1px solid var(--line-soft); }
+  .minibar__fill { display: block; height: 100%; background: var(--red); }
+
+  .risklist { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 3px; min-height: 120px; }
+
+  .risklist__btn {
+    display: grid;
+    grid-template-columns: 1fr 64px 26px;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 4px 6px 4px 0;
+    background: none;
+    border: 0;
+    font: inherit;
+    font-size: 0.75rem;
+    color: var(--ink-2);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .risklist__btn:hover { background: var(--neutral-wash); }
+  .risklist__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .risklist__bar { height: 8px; background: var(--concrete); border: 1px solid var(--line-soft); }
+  .risklist__fill { display: block; height: 100%; }
+  .risklist__score { text-align: right; font-size: 0.9375rem; color: var(--ink); }
+
+  .foot { font-size: 0.6875rem; margin: 10px 0 0; line-height: 1.35; }
+</style>

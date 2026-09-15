@@ -1,0 +1,39 @@
+---
+interface Props {
+  letter: string;
+  title: string;
+  lead?: string;
+}
+const { letter, title, lead } = Astro.props;
+---
+
+<div class="sechead">
+  <span class="sechead__letter display" aria-hidden="true">{letter}</span>
+  <h2 class="sechead__title display">{title}</h2>
+  {lead && <p class="sechead__lead">{lead}</p>}
+  <span class="sechead__rule" aria-hidden="true"></span>
+</div>
+
+<style>
+  .sechead {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 12px 0 -4px;
+  }
+
+  .sechead__letter {
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    background: var(--hivis);
+    padding: 2px 8px 1px;
+    align-self: center;
+  }
+
+  .sechead__title { font-size: 1.375rem; margin: 0; letter-spacing: 0.02em; text-transform: uppercase; }
+  .sechead__lead { margin: 0; font-size: 0.75rem; color: var(--ink-3); }
+  .sechead__rule { flex: 1; height: 1px; background: var(--line); min-width: 20px; }
+</style>

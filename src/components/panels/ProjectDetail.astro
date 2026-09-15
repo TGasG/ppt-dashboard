@@ -1,0 +1,167 @@
+---
+import type { Project } from '../../data/projects';
+import { ragOf, ragLabel, ragColor, ragReasons, isAnomali } from '../../lib/rag';
+import { rupiahMiliar, rupiahJuta, ratio, pct, tanggal, selisihHari, hariDeviasi } from '../../lib/format';
+import ProgressTrack from '../ui/ProgressTrack.astro';
+
+interface Props { project: Project }
+const { project: p } = Astro.props;
+
+const rag = ragOf(p);
+const reasons = ragReasons(p);
+const deviasi = selisihHari(p.projectedEnd, p.contractEnd);
+
+const metrics = [
+  { k: 'SPI', v: ratio(p.spi), tone: p.spi < 0.9 ? 'red' : p.spi < 0.95 ? 'amber' : 'ok', sub: 'Earned Value / Planned Value' },
+  { k: 'CPI', v: ratio(p.cpi), tone: p.cpi < 0.92 ? 'red' : p.cpi < 0.96 ? 'amber' : 'ok', sub: 'Earned Value / Actual Cost' },
+  { k: 'Selisih material', v: pct(p.materialVariance), tone: p.materialVariance > 5 ? 'red' : p.materialVariance > 2.5 ? 'amber' : 'ok', sub: rupiahJuta(p.untrackedValue) + ' tidak terlacak' },
+  { k: 'Skor risiko', v: String(p.riskScore), tone: p.riskScore >= 70 ? 'red' : p.riskScore >= 50 ? 'amber' : 'ok', sub: 'skala 0–100' },
+  { k: 'Temuan terbuka', v: String(p.openFindings), tone: p.severeFindings > 0 ? 'amber' : 'ok', sub: `${p.severeFindings} berkategori berat` },
+  { k: 'Temuan tertua', v: `${p.oldestFindingDays} hari`, tone: p.oldestFindingDays > 14 ? 'red' : p.oldestFindingDays > 7 ? 'amber' : 'ok', sub: 'target tindak lanjut 3 hari' },
+  { k: 'Hari pasokan terendah', v: `${p.minSupplyDays} hari`, tone: p.minSupplyDays <= 4 ? 'red' : p.minSupplyDays <= 9 ? 'amber' : 'ok', sub: 'material paling kritis di lokasi' },
+  { k: 'Indeks risiko sosial', v: String(p.socialIndex), tone: p.socialIndex >= 70 ? 'red' : p.socialIndex >= 50 ? 'amber' : 'ok', sub: 'skala 0–100' },
+];
+
+const toneClass: Record<string, string> = { red: 't-red', amber: 't-amber', ok: '' };
+---
+
+<article class="detail" data-detail={p.id} hidden>
+  <header class="detail__head" style={`--rag:${ragColor[rag]}`}>
+    <div class="detail__headrow">
+      <span class="detail__id">{p.id}</span>
+      <span class="tag" style={`background:${ragColor[rag]}; border-color:${ragColor[rag]}; color:#fff`}>{ragLabel[rag]}</span>
+      {isAnomali(p) && <span class="tag tag--anomaly">Anomali material</span>}
+    </div>
+    <h3 class="detail__name display">{p.name}</h3>
+    <p class="detail__meta">
+      {p.category} · {p.location} · {rupiahMiliar(p.contractValue)} · Manajer Operasional <strong>{p.manager}</strong>
+    </p>
+    {reasons.length > 0 && <p class="detail__why">Penyebab status: {reasons.join('; ')}.</p>}
+  </header>
+
+  <section class="detail__section">
+    <span class="eyebrow">Progres fisik terhadap rencana</span>
+    <div class="detail__progress">
+      <ProgressTrack actual={p.progressActual} plan={p.progressPlan} gapColor={ragColor[rag]} height={16} showLabels={false} />
+      <div class="detail__progressnums">
+        <span><span class="num big">{pct(p.progressActual)}</span> <span class="muted">aktual</span></span>
+        <span><span class="num big">{pct(p.progressPlan)}</span> <span class="muted">rencana</span></span>
+        <span>
+          <span class={`num big ${p.progressActual < p.progressPlan ? 't-red' : 't-green'}`}>
+            {p.progressActual >= p.progressPlan ? '+' : '−'}{pct(Math.abs(p.progressActual - p.progressPlan))}
+          </span>
+          <span class="muted">selisih</span>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <section class="detail__section">
+    <span class="eyebrow">Indikator kunci</span>
+    <dl class="metrics">
+      {
+        metrics.map((m) => (
+          <div class="metric">
+            <dt>{m.k}</dt>
+            <dd>
+              <span class={`num metric__v ${toneClass[m.tone]}`}>{m.v}</span>
+              <span class="metric__sub">{m.sub}</span>
+            </dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+
+  <section class="detail__section detail__section--split">
+    <div>
+      <span class="eyebrow">Tanggal selesai</span>
+      <p class="dates">
+        <span>Kontrak <strong>{tanggal(p.contractEnd)}</strong></span>
+        <span>Proyeksi <strong>{tanggal(p.projectedEnd)}</strong></span>
+        <span class={deviasi > 0 ? 't-red' : 't-green'}>Deviasi <strong>{hariDeviasi(deviasi)}</strong></span>
+      </p>
+    </div>
+    {
+      p.riskDrivers.length > 0 && (
+        <div>
+          <span class="eyebrow">Pemicu risiko</span>
+          <ul class="drivers">
+            {p.riskDrivers.map((d) => <li>{d}</li>)}
+          </ul>
+        </div>
+      )
+    }
+  </section>
+
+  <section class="detail__action">
+    <span class="eyebrow">Langkah yang diusulkan sistem</span>
+    <p class="detail__rec">{p.recommendation}</p>
+    <p class="detail__owner">
+      Penanggung jawab <strong>{p.manager}</strong> · Usulan bersifat rekomendasi; eksekusi melalui persetujuan di ERP.
+    </p>
+  </section>
+</article>
+
+<style>
+  .detail { display: flex; flex-direction: column; }
+  .detail[hidden] { display: none; }
+
+  .detail__head {
+    padding: 18px 22px 16px;
+    border-bottom: 1px solid var(--line);
+    border-left: var(--rail) solid var(--rag);
+    background: var(--panel);
+  }
+
+  .detail__headrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .detail__id {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+  }
+
+  .detail__name { font-size: 1.75rem; margin: 8px 0 4px; line-height: 1.05; }
+  .detail__meta { margin: 0; font-size: 0.75rem; color: var(--ink-2); }
+  .detail__why { margin: 8px 0 0; font-size: 0.75rem; color: var(--red-ink); }
+
+  .detail__section { padding: 16px 22px; border-bottom: 1px solid var(--line-soft); }
+  .detail__section--split { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+
+  .detail__progress { margin-top: 10px; }
+  .detail__progressnums { display: flex; gap: 26px; margin-top: 10px; align-items: baseline; }
+  .detail__progressnums .big { font-size: 1.5rem; }
+  .detail__progressnums .muted { font-size: 0.6875rem; }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--line-soft);
+    border: 1px solid var(--line-soft);
+    margin: 10px 0 0;
+  }
+
+  .metric { background: var(--panel); padding: 9px 12px 10px; }
+  .metric dt { font-size: 0.6875rem; color: var(--ink-3); }
+  .metric dd { margin: 3px 0 0; display: flex; align-items: baseline; gap: 8px; }
+  .metric__v { font-size: 1.375rem; }
+  .metric__sub { font-size: 0.6875rem; color: var(--ink-3); }
+
+  .dates { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 0; font-size: 0.8125rem; }
+  .dates strong { font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem; }
+
+  .drivers { margin: 8px 0 0; padding-left: 16px; font-size: 0.8125rem; color: var(--ink-2); display: grid; gap: 3px; }
+
+  .detail__action { padding: 16px 22px 20px; background: var(--blue-wash); border-left: var(--rail) solid var(--blue); }
+  .detail__rec { margin: 8px 0 0; font-size: 0.875rem; line-height: 1.5; }
+  .detail__owner { margin: 10px 0 0; font-size: 0.6875rem; color: var(--ink-2); }
+
+  @media (max-width: 720px) {
+    .detail__section--split { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: 1fr; }
+  }
+</style>

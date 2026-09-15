@@ -1,0 +1,157 @@
+---
+import { sentiment, voiceKpi } from '../../data/community';
+import { band, innerW, innerH, type Box } from '../../lib/chart';
+import { pct, num } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+import Kpi from '../ui/Kpi.astro';
+import Legend from '../ui/Legend.astro';
+
+const box: Box = { w: 560, h: 244, top: 20, right: 6, bottom: 32, left: 30 };
+const iw = innerW(box);
+const ih = innerH(box);
+
+const rows = sentiment.map((m) => {
+  const total = m.positive + m.neutral + m.negative;
+  return {
+    ...m,
+    total,
+    pPos: (m.positive / total) * 100,
+    pNeu: (m.neutral / total) * 100,
+    pNeg: (m.negative / total) * 100,
+  };
+});
+
+const first = rows[0];
+const last = rows[rows.length - 1];
+const negShift = last.pNeg - first.pNeg;
+const prev = rows[rows.length - 2];
+const monthShift = last.pNeg - prev.pNeg;
+
+const gridValues = [0, 25, 50, 75, 100];
+const yPct = (v: number) => ih - (v / 100) * ih;
+---
+
+<Panel
+  id="E1"
+  title="Suara masyarakat"
+  question="Bagaimana persepsi masyarakat terhadap proyek kita?"
+  source="Social CRM, pemantauan media sosial, kanal aduan aplikasi warga"
+  freshness="30 menit"
+  aggregate
+>
+  <div class="kpi-row e1-kpi">
+    <Kpi
+      label="Aspirasi masuk bulan berjalan"
+      value={num(voiceKpi.incomingThisMonth)}
+      tone="netral"
+      note={`bulan lalu ${num(voiceKpi.incomingLastMonth)}`}
+    />
+    <Kpi
+      label="Rata-rata waktu tanggap"
+      value={num(voiceKpi.avgResponseDays, 1)}
+      unit="hari"
+      tone="merah"
+      note={`target 12 bulan ≤ ${voiceKpi.targetResponseDays} hari`}
+    />
+    <Kpi
+      label="Insiden gangguan proyek"
+      value={num(voiceKpi.disruptionIncidents12m)}
+      tone="kuning"
+      note="12 bulan terakhir"
+    />
+  </div>
+
+  <figure class="chart">
+    <svg viewBox={`0 0 ${box.w} ${box.h}`} class="chart__svg" role="img"
+      aria-label={`Komposisi sentimen enam bulan terakhir. Sentimen negatif bergerak dari ${pct(first.pNeg, 0)} pada ${first.month} menjadi ${pct(last.pNeg, 0)} pada ${last.month}.`}>
+      <g transform={`translate(${box.left},${box.top})`}>
+        {
+          gridValues.map((v) => (
+            <>
+              <line x1={0} x2={iw} y1={yPct(v)} y2={yPct(v)} class={v === 0 ? 'axis' : 'grid'} />
+              <text x={-7} y={yPct(v) + 4} class="tick tick--y">{v}</text>
+            </>
+          ))
+        }
+
+        {
+          rows.map((m, i) => {
+            const b = band(i, rows.length, iw, 0.28);
+            const hNeg = (m.pNeg / 100) * ih;
+            const hNeu = (m.pNeu / 100) * ih;
+            const hPos = (m.pPos / 100) * ih;
+            return (
+              <g
+                class="barg"
+                tabindex="0"
+                data-tip={`${m.month} 2026 — ${m.total} aspirasi\nPositif\t${m.positive} (${pct(m.pPos, 0)})\nNetral\t${m.neutral} (${pct(m.pNeu, 0)})\nNegatif\t${m.negative} (${pct(m.pNeg, 0)})`}
+              >
+                <rect x={b.x} y={0} width={b.w} height={hNeg} class="seg seg--neg" />
+                <rect x={b.x} y={hNeg} width={b.w} height={hNeu} class="seg seg--neu" />
+                <rect x={b.x} y={hNeg + hNeu} width={b.w} height={hPos} class="seg seg--pos" />
+                <text x={b.center} y={hNeg / 2 + 4} class="seglabel">{pct(m.pNeg, 0)}</text>
+                <text x={b.center} y={-7} class="totallabel">{m.total}</text>
+                <text x={b.center} y={ih + 16} class="tick tick--x">{m.month}</text>
+              </g>
+            );
+          })
+        }
+      </g>
+    </svg>
+
+    <figcaption class="chart__cap">
+      <Legend
+        items={[
+          { label: 'Negatif', color: 'var(--red)' },
+          { label: 'Netral', color: '#B9B9AC' },
+          { label: 'Positif', color: 'var(--green)' },
+        ]}
+      />
+      <p class="chart__note">
+        Porsi negatif <strong class={negShift > 0 ? 't-red' : 't-green'}>{negShift > 0 ? 'naik' : 'turun'} {pct(Math.abs(negShift), 1)}</strong>{' '}
+        sejak {first.month}, dengan {monthShift < 0 ? 'perbaikan' : 'pemburukan'} {pct(Math.abs(monthShift), 1)} pada bulan terakhir.
+        Angka di atas batang adalah jumlah aspirasi masuk.
+      </p>
+      <p class="chart__method">
+        Sentimen dihitung dari analisis teks aduan, komentar media sosial, dan pemberitaan lokal di sekitar radius
+        proyek. Klasifikasi menggunakan model bahasa yang ditinjau berkala oleh Divisi Analitik; sampel acak diperiksa
+        manual setiap bulan.
+      </p>
+    </figcaption>
+  </figure>
+</Panel>
+
+<style>
+  .e1-kpi { grid-template-columns: repeat(3, 1fr); margin-bottom: var(--pad); }
+  .chart { margin: 0; }
+  .chart__svg { display: block; width: 100%; height: auto; }
+
+  .grid { stroke: var(--line-soft); }
+  .axis { stroke: var(--line); }
+  .tick { font-family: var(--font-body); font-size: 10px; fill: var(--ink-3); }
+  .tick--y { text-anchor: end; }
+  .tick--x { text-anchor: middle; }
+
+  .seg--neg { fill: var(--red); }
+  .seg--neu { fill: #B9B9AC; }
+  .seg--pos { fill: var(--green); }
+
+  .seglabel {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 12px;
+    fill: #fff;
+    text-anchor: middle;
+  }
+
+  .totallabel { font-family: var(--font-display); font-weight: 600; font-size: 11px; fill: var(--ink-3); text-anchor: middle; }
+
+  .barg { cursor: default; }
+  .barg:hover .seg, .barg:focus-visible .seg { fill-opacity: 0.85; }
+  .barg:focus-visible { outline: none; }
+  .barg:focus-visible .seg--pos { stroke: var(--ink); stroke-width: 1.5; }
+
+  .chart__cap { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line-soft); display: grid; gap: 8px; }
+  .chart__note { margin: 0; font-size: 0.75rem; color: var(--ink-2); line-height: 1.45; }
+  .chart__method { margin: 0; font-size: 0.6875rem; color: var(--ink-3); line-height: 1.45; }
+</style>

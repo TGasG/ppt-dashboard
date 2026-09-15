@@ -1,0 +1,382 @@
+/* ==========================================================================
+   Papan Direksi — sistem visual
+   Palet diambil dari kosakata lapangan konstruksi: beton, navy gambar teknik,
+   dan kuning rambu keselamatan. Sudut siku, tanpa bayangan, garis tipis.
+   ========================================================================== */
+
+:root {
+  /* Palet dasar */
+  --concrete:      #E5E5DF;
+  --concrete-deep: #D8D8D0;
+  --panel:         #FBFBF8;
+  --line:          #CDCDC4;
+  --line-soft:     #E2E2DA;
+  --ink:           #16233B;
+
+  /* Tinta turunan — seluruhnya ≥ 4,5:1 di atas --panel */
+  --ink-2: #414C63;
+  --ink-3: #626B7C;
+
+  /* Warna status — makna tunggal, tidak pernah dekoratif */
+  --red:    #BE3A2B;
+  --amber:  #D9860F;
+  --green:  #2E7D5B;
+  --blue:   #2B5F9E;
+
+  /* Varian tinta untuk teks status (kontras ≥ 4,5:1) */
+  --red-ink:   #A82E20;
+  --amber-ink: #8F5A06;
+  --green-ink: #2A6E51;
+  --blue-ink:  #27548B;
+
+  /* Latar status yang sangat tipis */
+  --red-wash:   #F7E9E7;
+  --amber-wash: #FAF0DF;
+  --green-wash: #E7F1EC;
+  --blue-wash:  #E8EFF7;
+  --neutral-wash: #F1F1EB;
+
+  /* Warna perhatian — hanya penanda anomali dan garis identitas */
+  --hivis: #F2C200;
+
+  /* Tipografi */
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Variable", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  /* Irama */
+  --gap: 1px;           /* garis pemisah = celah grid berlatar garis */
+  --pad: 18px;
+  --pad-sm: 12px;
+  --rail: 4px;          /* lebar pita status di sisi kiri */
+  --maxw: 1920px;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  background: var(--concrete);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------- tipografi */
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  line-height: 1;
+}
+
+.num {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.muted { color: var(--ink-3); }
+.dim   { color: var(--ink-2); }
+
+/* status sebagai teks — selalu berdampingan dengan angka atau label */
+.t-red   { color: var(--red-ink); }
+.t-amber { color: var(--amber-ink); }
+.t-green { color: var(--green-ink); }
+.t-blue  { color: var(--blue-ink); }
+
+/* ------------------------------------------------------------------ panel */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px var(--pad) 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.panel__id {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--concrete);
+  border: 1px solid var(--line);
+  padding: 1px 6px 0;
+  align-self: center;
+}
+
+.panel__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1875rem;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+.panel__question {
+  font-size: 0.75rem;
+  color: var(--ink-3);
+  font-style: italic;
+  margin: 2px 0 0;
+}
+
+.panel__body { padding: var(--pad); flex: 1; min-width: 0; }
+.panel__body--flush { padding: 0; }
+
+.panel__foot {
+  border-top: 1px solid var(--line-soft);
+  padding: 7px var(--pad) 8px;
+  font-size: 0.6875rem;
+  color: var(--ink-3);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------- indikator ringkas */
+
+.kpi-row {
+  display: grid;
+  gap: 1px;
+  background: var(--line-soft);
+  border: 1px solid var(--line-soft);
+}
+
+.kpi {
+  background: var(--panel);
+  padding: 10px 12px 11px;
+  min-width: 0;
+}
+
+.kpi__label {
+  font-size: 0.6875rem;
+  color: var(--ink-3);
+  line-height: 1.25;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.kpi__value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.75rem;
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+}
+
+.kpi__unit {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-3);
+  margin-left: 3px;
+}
+
+.kpi__line { display: flex; align-items: baseline; gap: 3px; flex-wrap: wrap; }
+
+.kpi__against {
+  font-size: 0.6875rem;
+  color: var(--ink-3);
+  margin-left: 7px;
+  white-space: nowrap;
+}
+
+.kpi__note {
+  font-size: 0.6875rem;
+  color: var(--ink-3);
+  margin-top: 5px;
+  line-height: 1.3;
+}
+
+/* ------------------------------------------------------------------ label */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 7px 3px;
+  border: 1px solid var(--line);
+  background: var(--neutral-wash);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.tag--red   { background: var(--red-wash);   border-color: #E4C4BF; color: var(--red-ink); }
+.tag--amber { background: var(--amber-wash); border-color: #E8D2A6; color: var(--amber-ink); }
+.tag--green { background: var(--green-wash); border-color: #BFD8CD; color: var(--green-ink); }
+.tag--blue  { background: var(--blue-wash);  border-color: #C2D3E8; color: var(--blue-ink); }
+
+/* penanda anomali — satu-satunya pemakaian kuning hi-vis */
+.tag--anomaly {
+  background: var(--hivis);
+  border-color: #C9A200;
+  color: #3A2E00;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ tabel */
+
+.table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+
+/* tabel padat tetap terbaca di layar sempit tanpa mendorong lebar halaman */
+.table-scroll { overflow-x: auto; max-width: 100%; }
+
+.table thead th {
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  background: var(--panel);
+}
+
+/* th sebagai kepala baris memakai gaya sel biasa, bukan gaya kepala kolom */
+.table tbody th {
+  text-align: left;
+  font-weight: 600;
+  font-size: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  color: inherit;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+
+.table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:hover { background: var(--neutral-wash); }
+.table .n { text-align: right; font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem; }
+
+/* ------------------------------------------------------- batang & meteran */
+
+.bar-track {
+  position: relative;
+  height: 10px;
+  background: var(--concrete);
+  border: 1px solid var(--line-soft);
+}
+
+.bar-fill { position: absolute; inset: 0 auto 0 0; }
+
+/* -------------------------------------------------------------- aksesibel */
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Gerak hanya sebagai respons tindakan pengguna */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  html { background: #fff; }
+}
+
+/* --------------------------------------------- keterangan angka pada grafik */
+
+.charttip {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  background: var(--ink);
+  color: #F4F4EE;
+  border: 1px solid #2A3854;
+  border-top: 2px solid var(--hivis);
+  padding: 8px 11px 9px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  max-width: 300px;
+  box-shadow: none;
+}
+
+.charttip__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  letter-spacing: 0.01em;
+  margin-bottom: 4px;
+}
+
+.charttip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 0.6875rem;
+  color: #B9C0CD;
+}
+
+.charttip__row b {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: #F4F4EE;
+}
+
+.charttip__note {
+  font-size: 0.6875rem;
+  color: #B9C0CD;
+  margin-top: 4px;
+}

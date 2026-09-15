@@ -1,0 +1,163 @@
+---
+import { dashboardMeta, feeds } from '../../data/meta';
+
+const dt = new Date(dashboardMeta.generatedAt);
+const tanggalPanjang = new Intl.DateTimeFormat('id-ID', {
+  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta',
+}).format(dt);
+const jam = new Intl.DateTimeFormat('id-ID', {
+  hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta',
+}).format(dt);
+---
+
+<header class="top">
+  <div class="top__hivis" aria-hidden="true"></div>
+
+  <div class="top__inner">
+    <div class="top__brand">
+      <span class="top__mark display" aria-hidden="true">PPt</span>
+      <div class="top__names">
+        <h1 class="top__title display">{dashboardMeta.system}</h1>
+        <p class="top__sub">
+          {dashboardMeta.subtitle}
+          <span class="top__org">{dashboardMeta.org} · {dashboardMeta.unit}</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="top__right">
+      <div class="top__when">
+        <span class="top__date">{tanggalPanjang}</span>
+        <span class="top__time num">{jam} WIB</span>
+        <span class="top__viewer">
+          {dashboardMeta.viewer.name} · {dashboardMeta.viewer.scope} · {dashboardMeta.viewer.rights}
+        </span>
+      </div>
+
+      <button type="button" class="top__export no-print" data-export>Cetak / ekspor</button>
+    </div>
+  </div>
+
+  <ul class="feeds" aria-label="Kesegaran data per sumber">
+    {
+      feeds.map((f) => (
+        <li class={`feed feed--${f.state}`}>
+          <span class="feed__dot" aria-hidden="true" />
+          <span class="feed__label">{f.label}</span>
+          <span class="feed__fresh">{f.freshness}</span>
+          <span class="feed__detail">{f.detail}</span>
+        </li>
+      ))
+    }
+  </ul>
+</header>
+
+<style>
+  .top { background: var(--ink); color: #F4F4EE; }
+  .top__hivis { height: 4px; background: var(--hivis); }
+
+  .top__inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 16px var(--pad) 15px;
+    max-width: var(--maxw);
+    margin: 0 auto;
+  }
+
+  .top__brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+
+  .top__mark {
+    display: grid;
+    place-items: center;
+    inline-size: 46px;
+    block-size: 46px;
+    background: var(--hivis);
+    color: var(--ink);
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    flex: none;
+  }
+
+  .top__names { min-width: 0; }
+
+  .top__title {
+    font-size: 2rem;
+    margin: 0;
+    line-height: 0.95;
+    letter-spacing: 0.015em;
+    text-transform: uppercase;
+  }
+
+  .top__sub {
+    margin: 4px 0 0;
+    font-size: 0.75rem;
+    color: #B9C0CD;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .top__org { color: #8A93A5; }
+  .top__org::before { content: ''; }
+
+  .top__right { display: flex; align-items: flex-start; gap: 16px; }
+  .top__when { text-align: right; display: grid; gap: 1px; }
+  .top__date { font-size: 0.75rem; color: #B9C0CD; }
+  .top__time { font-size: 1.375rem; line-height: 1; }
+  .top__viewer { font-size: 0.6875rem; color: #8A93A5; margin-top: 3px; }
+
+  .top__export {
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 6px 12px 7px;
+    background: transparent;
+    border: 1px solid #47536B;
+    color: #F4F4EE;
+    cursor: pointer;
+  }
+
+  .top__export:hover { background: #22304B; border-color: #6C7A94; }
+  .top__export:focus-visible { outline: 2px solid var(--hivis); outline-offset: 2px; }
+
+  .feeds {
+    list-style: none;
+    margin: 0;
+    padding: 0 var(--pad);
+    max-width: var(--maxw);
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border-top: 1px solid #2A3854;
+  }
+
+  .feed {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 7px 18px 8px 0;
+    margin-right: 18px;
+    font-size: 0.6875rem;
+    color: #8A93A5;
+    border-right: 1px solid #2A3854;
+  }
+
+  .feed:last-child { border-right: 0; }
+  .feed__dot { inline-size: 7px; block-size: 7px; background: var(--green); flex: none; align-self: center; }
+  .feed--tertunda .feed__dot { background: var(--amber); }
+  .feed__label { color: #DCE0E8; font-weight: 600; }
+  .feed__fresh { color: #B9C0CD; }
+
+  @media (max-width: 900px) {
+    .top__title { font-size: 1.625rem; }
+    .top__inner { flex-direction: column; gap: 14px; }
+    .top__right { width: 100%; justify-content: space-between; align-items: center; }
+    .top__when { text-align: left; }
+    .feed__detail { display: none; }
+  }
+</style>

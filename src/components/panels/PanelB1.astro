@@ -1,0 +1,217 @@
+---
+import { line, curveMonotoneX } from 'd3-shape';
+import { sCurve, scheduleKpi } from '../../data/portfolio';
+import { linear, point, innerW, innerH, type Box } from '../../lib/chart';
+import { pct, ratio, num } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+import Kpi from '../ui/Kpi.astro';
+import Legend from '../ui/Legend.astro';
+
+const box: Box = { w: 780, h: 286, top: 16, right: 96, bottom: 30, left: 36 };
+const iw = innerW(box);
+const ih = innerH(box);
+
+const x = (i: number) => point(i, sCurve.length, iw);
+const y = linear(0, 100, ih, 0);
+
+const mk = (key: 'plan' | 'actual' | 'projection') =>
+  line<(typeof sCurve)[number]>()
+    .defined((d) => d[key] !== null)
+    .x((_, i) => x(i))
+    .y((d) => y(d[key] as number))
+    .curve(curveMonotoneX)(sCurve) ?? '';
+
+const planPath = mk('plan');
+const actualPath = mk('actual');
+const projPath = mk('projection');
+
+const lastActualIdx = sCurve.reduce((acc, d, i) => (d.actual !== null ? i : acc), 0);
+const lastActual = sCurve[lastActualIdx];
+const lastPlan = sCurve[sCurve.length - 1];
+const lastProj = sCurve[sCurve.length - 1];
+
+const gridValues = [0, 20, 40, 60, 80, 100];
+const projStartX = x(lastActualIdx);
+const endGap = (lastProj.projection as number) - lastPlan.plan;
+---
+
+<Panel
+  id="B1"
+  title="Kurva-S rencana vs aktual"
+  question="Apakah portofolio akan selesai tepat waktu?"
+  source="ERP modul Project Management, laporan harian lapangan"
+  freshness="harian pukul 06.00"
+  aggregate
+>
+  <div class="kpi-row b1-kpi">
+    <Kpi
+      label="SPI portofolio"
+      value={ratio(scheduleKpi.spi)}
+      tone="kuning"
+      note="Earned Value / Planned Value"
+    />
+    <Kpi
+      label="Milestone terlambat"
+      value={num(scheduleKpi.lateMilestones)}
+      unit={`/ ${num(scheduleKpi.totalMilestones)}`}
+      tone="kuning"
+      note={`${pct((scheduleKpi.lateMilestones / scheduleKpi.totalMilestones) * 100, 1)} dari seluruh milestone`}
+    />
+    <Kpi
+      label="Rata-rata deviasi tanggal selesai"
+      value={`+${scheduleKpi.avgFinishDeviation}`}
+      unit="hari"
+      tone="merah"
+      note="proyeksi dikurangi tanggal kontrak"
+    />
+    <Kpi
+      label="Progres fisik aktual"
+      value={pct(scheduleKpi.physicalProgress)}
+      tone="netral"
+      note={`rencana ${pct(scheduleKpi.plannedProgress)} · tertinggal ${pct(scheduleKpi.plannedProgress - scheduleKpi.physicalProgress)}`}
+    />
+  </div>
+
+  <figure class="chart">
+    <svg viewBox={`0 0 ${box.w} ${box.h}`} class="chart__svg" role="img"
+      aria-label={`Kurva-S kumulatif 2026. Rencana berakhir di ${pct(lastPlan.plan)}, aktual September ${pct(lastActual.actual as number)}, proyeksi Desember ${pct(lastProj.projection as number)}.`}>
+      <g transform={`translate(${box.left},${box.top})`}>
+        <!-- latar area proyeksi -->
+        <rect x={projStartX} y={0} width={iw - projStartX} height={ih} class="proj-bg" />
+        <text x={projStartX + 6} y={12} class="proj-label">Proyeksi</text>
+
+        {
+          gridValues.map((v) => (
+            <>
+              <line x1={0} x2={iw} y1={y(v)} y2={y(v)} class={v === 0 ? 'axis' : 'grid'} />
+              <text x={-8} y={y(v) + 4} class="tick tick--y">{v}</text>
+            </>
+          ))
+        }
+
+        {
+          sCurve.map((d, i) => (
+            <text x={x(i)} y={ih + 18} class="tick tick--x">{d.month}</text>
+          ))
+        }
+
+        <path d={planPath} class="line line--plan" />
+        <path d={projPath} class="line line--proj" />
+        <path d={actualPath} class="line line--actual" />
+
+        {
+          sCurve.map((d, i) =>
+            d.actual !== null ? <circle cx={x(i)} cy={y(d.actual)} r={2.6} class="dot dot--actual" /> : null,
+          )
+        }
+
+        <circle cx={x(lastActualIdx)} cy={y(lastActual.actual as number)} r={4.5} class="dot dot--now" />
+
+        <!-- label langsung di ujung garis, agar identitas tidak bergantung warna -->
+        <text x={iw + 7} y={y(lastPlan.plan) + 4} class="endlabel endlabel--plan">Rencana {pct(lastPlan.plan)}</text>
+        <text x={iw + 7} y={y(lastProj.projection as number) + 4} class="endlabel endlabel--proj">
+          Proyeksi {pct(lastProj.projection as number)}
+        </text>
+        <text x={x(lastActualIdx) - 6} y={y(lastActual.actual as number) - 10} class="endlabel endlabel--actual" text-anchor="end">
+          Aktual {pct(lastActual.actual as number)}
+        </text>
+
+        {
+          sCurve.map((d, i) => (
+            <rect
+              x={x(i) - iw / (sCurve.length * 2)}
+              y={0}
+              width={iw / sCurve.length}
+              height={ih}
+              class="hit"
+              tabindex="0"
+              data-tip={[
+                `${d.month} 2026`,
+                `Rencana\t${pct(d.plan)}`,
+                d.actual !== null ? `Aktual\t${pct(d.actual)}` : null,
+                d.actual !== null ? `Selisih\t${d.actual - d.plan >= 0 ? '+' : '−'}${pct(Math.abs(d.actual - d.plan))}` : null,
+                d.actual === null && d.projection !== null ? `Proyeksi\t${pct(d.projection)}` : null,
+              ]
+                .filter(Boolean)
+                .join('\n')}
+            />
+          ))
+        }
+      </g>
+    </svg>
+
+    <figcaption class="chart__cap">
+      <Legend
+        items={[
+          { label: 'Aktual', color: 'var(--ink)', shape: 'garis' },
+          { label: 'Rencana', color: '#9A9A8C', shape: 'putus' },
+          { label: 'Proyeksi laju 3 bulan terakhir', color: 'var(--blue)', shape: 'putus' },
+        ]}
+      />
+      <p class="chart__note">
+        Dengan laju {num(scheduleKpi.monthlyRate, 1)} poin per bulan, portofolio diproyeksikan mencapai{' '}
+        <strong class="t-red">{pct(lastProj.projection as number)}</strong> pada Desember —{' '}
+        <strong class="t-red">{pct(Math.abs(endGap))}</strong> di bawah rencana.
+      </p>
+    </figcaption>
+  </figure>
+</Panel>
+
+<style>
+  .b1-kpi { grid-template-columns: repeat(4, 1fr); margin-bottom: var(--pad); }
+  .chart { margin: 0; }
+  .chart__svg { display: block; width: 100%; height: auto; }
+
+  .proj-bg { fill: var(--concrete); opacity: 0.75; }
+  .proj-label {
+    font-family: var(--font-body);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    fill: var(--ink-3);
+  }
+
+  .grid { stroke: var(--line-soft); stroke-width: 1; }
+  .axis { stroke: var(--line); stroke-width: 1; }
+
+  .tick { font-family: var(--font-body); font-size: 10px; fill: var(--ink-3); }
+  .tick--y { text-anchor: end; }
+  .tick--x { text-anchor: middle; }
+
+  .line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .line--plan { stroke: #9A9A8C; stroke-width: 2; stroke-dasharray: 6 4; }
+  .line--proj { stroke: var(--blue); stroke-width: 2.25; stroke-dasharray: 2 4; }
+  .line--actual { stroke: var(--ink); stroke-width: 2.75; }
+
+  .dot--actual { fill: var(--ink); }
+  .dot--now { fill: var(--panel); stroke: var(--ink); stroke-width: 2.5; }
+
+  .endlabel {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .endlabel--plan { fill: #6F6F62; }
+  .endlabel--proj { fill: var(--blue-ink); }
+  .endlabel--actual { fill: var(--ink); }
+
+  .hit { fill: transparent; cursor: crosshair; }
+  .hit:hover, .hit:focus-visible { fill: var(--ink); fill-opacity: 0.05; outline: none; }
+
+  .chart__cap {
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .chart__note { margin: 0; font-size: 0.75rem; color: var(--ink-2); max-width: 46ch; }
+
+  @media (max-width: 900px) {
+    .b1-kpi { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>

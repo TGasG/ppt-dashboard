@@ -1,0 +1,156 @@
+---
+import { ageBuckets, followUpKpi } from '../../data/quality';
+import { thresholds } from '../../lib/thresholds';
+import { num, pct } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+
+const total = ageBuckets.reduce((s, b) => s + b.count, 0);
+const max = Math.max(...ageBuckets.map((b) => b.count));
+
+const escalation = [
+  { age: 'Lebih dari 3 hari', action: 'Pengingat ke penanggung jawab lapangan' },
+  { age: 'Lebih dari 7 hari', action: 'Notifikasi ke Manajer Operasional' },
+  { age: 'Lebih dari 14 hari', action: 'Masuk laporan Direktur Operasi setiap Senin pagi' },
+  { age: 'Lebih dari 14 hari dan berat', action: 'Masuk panel F2 sebagai isu kritis direksi' },
+];
+
+const overTarget = followUpKpi.avgDays - followUpKpi.targetDays;
+const targetPos = (followUpKpi.targetDays / 12) * 100;
+const actualPos = (followUpKpi.avgDays / 12) * 100;
+---
+
+<Panel
+  id="D2"
+  title="Umur temuan terbuka"
+  question="Berapa lama temuan menunggu ditindaklanjuti?"
+  source="Alur kerja tindak lanjut pada aplikasi inspeksi"
+  freshness="waktu nyata"
+>
+  <div class="gauge">
+    <div class="gauge__head">
+      <span class="kpi__label">Rata-rata waktu temuan ke tindak lanjut</span>
+      <span class="gauge__nums">
+        <span class="num gauge__value t-red">{num(followUpKpi.avgDays, 1)}</span>
+        <span class="kpi__unit">hari</span>
+        <span class="gauge__delta t-red">{num(overTarget, 1)} hari di atas target</span>
+      </span>
+    </div>
+    <div class="gauge__track" role="img" aria-label={`Rata-rata ${num(followUpKpi.avgDays, 1)} hari terhadap target ${followUpKpi.targetDays} hari`}>
+      <span class="gauge__target" style={`width:${targetPos}%`}></span>
+      <span class="gauge__actual" style={`width:${actualPos}%`}></span>
+      <span class="gauge__marker" style={`left:${targetPos}%`}></span>
+    </div>
+    <div class="gauge__scale">
+      <span style={`left:${targetPos}%`} class="gauge__scalelabel">target {followUpKpi.targetDays} hari</span>
+      <span class="gauge__prev">kuartal lalu {num(followUpKpi.avgDaysPrev, 1)} hari</span>
+    </div>
+  </div>
+
+  <ul class="buckets">
+    {
+      ageBuckets.map((b) => (
+        <li class={`bucket ${b.critical ? 'bucket--critical' : ''}`}>
+          <div class="bucket__head">
+            <span class="bucket__label">{b.label}</span>
+            <span class="bucket__count num">{b.count}</span>
+            <span class="bucket__share">{pct((b.count / total) * 100, 0)}</span>
+          </div>
+          <div
+            class="bucket__bar"
+            data-tip={`${b.label}\nTemuan terbuka\t${b.count}\nBerkategori berat\t${b.severe}\nPorsi\t${pct((b.count / total) * 100, 0)}`}
+          >
+            <span class="bucket__fill" style={`width:${(b.count / max) * 100}%`} />
+            <span class="bucket__severe" style={`width:${(b.severe / max) * 100}%`} />
+          </div>
+          <span class="bucket__severelabel">{b.severe} berkategori berat</span>
+        </li>
+      ))
+    }
+  </ul>
+
+  <div class="escalation">
+    <h3 class="escalation__title display">Aturan eskalasi otomatis</h3>
+    <ul class="escalation__list">
+      {
+        escalation.map((e, i) => (
+          <li class={`escalation__item ${i >= 2 ? 'is-board' : ''}`}>
+            <span class="escalation__age">{e.age}</span>
+            <span class="escalation__arrow" aria-hidden="true">→</span>
+            <span class="escalation__action">{e.action}</span>
+          </li>
+        ))
+      }
+    </ul>
+    <p class="escalation__note">
+      Ambang {thresholds.findingAge.reminder}/{thresholds.findingAge.escalate}/{thresholds.findingAge.board} hari
+      dikelola oleh Divisi Analitik. Setiap perubahan ambang tercatat pada jejak audit.
+    </p>
+  </div>
+</Panel>
+
+<style>
+  .gauge { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line-soft); }
+  .gauge__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .gauge__nums { display: inline-flex; align-items: baseline; gap: 5px; }
+  .gauge__value { font-family: var(--font-display); font-weight: 600; font-size: 2rem; line-height: 1; }
+  .gauge__delta { font-size: 0.6875rem; margin-left: 8px; }
+
+  .gauge__track {
+    position: relative;
+    height: 14px;
+    margin-top: 9px;
+    background: var(--concrete);
+    border: 1px solid var(--line-soft);
+  }
+
+  .gauge__target { position: absolute; inset: 0 auto 0 0; background: var(--green-wash); }
+  .gauge__actual { position: absolute; top: 3px; bottom: 3px; left: 0; background: var(--red); }
+  .gauge__marker { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--green); }
+
+  .gauge__scale { position: relative; height: 15px; margin-top: 4px; font-size: 0.625rem; color: var(--ink-3); }
+  .gauge__scalelabel { position: absolute; transform: translateX(-50%); white-space: nowrap; color: var(--green-ink); }
+  .gauge__prev { position: absolute; right: 0; }
+
+  .buckets { list-style: none; margin: 0; padding: 0; display: grid; gap: 13px; }
+
+  .bucket { padding-left: 10px; border-left: 3px solid var(--line); }
+  .bucket--critical { border-left-color: var(--red); }
+
+  .bucket__head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 4px; }
+  .bucket__label { font-size: 0.8125rem; font-weight: 600; }
+  .bucket__count { margin-left: auto; font-size: 1.25rem; }
+  .bucket__share { font-size: 0.6875rem; color: var(--ink-3); min-width: 32px; text-align: right; }
+
+  .bucket__bar { position: relative; height: 16px; background: var(--concrete); border: 1px solid var(--line-soft); }
+  .bucket__fill { position: absolute; inset: 0 auto 0 0; background: #B9B9AC; }
+  .bucket--critical .bucket__fill { background: var(--red); }
+
+  /* porsi temuan berat digambar bertekstur di dalam batang */
+  .bucket__severe {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background-image: repeating-linear-gradient(135deg, var(--ink) 0 2px, transparent 2px 5px);
+  }
+
+  .bucket__severelabel { display: block; margin-top: 3px; font-size: 0.625rem; color: var(--ink-3); }
+
+  .escalation { margin-top: 20px; padding-top: 15px; border-top: 2px solid var(--line); }
+  .escalation__title { font-size: 1rem; margin: 0 0 9px; }
+  .escalation__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft); }
+
+  .escalation__item {
+    display: grid;
+    grid-template-columns: 148px 16px 1fr;
+    gap: 6px;
+    align-items: baseline;
+    background: var(--panel);
+    padding: 7px 10px;
+    font-size: 0.75rem;
+  }
+
+  .escalation__item.is-board { background: var(--amber-wash); }
+  .escalation__age { font-weight: 600; }
+  .escalation__arrow { color: var(--ink-3); }
+  .escalation__action { color: var(--ink-2); }
+  .escalation__note { margin: 9px 0 0; font-size: 0.6875rem; color: var(--ink-3); line-height: 1.45; }
+</style>

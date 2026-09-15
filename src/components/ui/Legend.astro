@@ -1,0 +1,46 @@
+---
+interface Item {
+  label: string;
+  color: string;
+  /** "garis" untuk grafik garis, "petak" untuk batang dan area */
+  shape?: 'petak' | 'garis' | 'putus';
+}
+interface Props {
+  items: Item[];
+  class?: string;
+}
+const { items, class: className = '' } = Astro.props;
+---
+
+<ul class={`legend ${className}`}>
+  {
+    items.map((it) => (
+      <li class="legend__item">
+        <span class={`legend__mark legend__mark--${it.shape ?? 'petak'}`} style={`--c:${it.color}`} aria-hidden="true" />
+        {it.label}
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.6875rem;
+    color: var(--ink-2);
+  }
+  .legend__item { display: inline-flex; align-items: center; gap: 6px; }
+  .legend__mark { flex: none; }
+  .legend__mark--petak { inline-size: 10px; block-size: 10px; background: var(--c); }
+  .legend__mark--garis { inline-size: 16px; block-size: 3px; background: var(--c); }
+  .legend__mark--putus {
+    inline-size: 16px;
+    block-size: 0;
+    border-top: 3px dashed var(--c);
+  }
+</style>

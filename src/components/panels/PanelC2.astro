@@ -1,0 +1,279 @@
+---
+import { supplyMatrix, transferSuggestions } from '../../data/material';
+import { projects, shortName } from '../../data/projects';
+import { supplyBand } from '../../lib/rag';
+import { rupiahJuta } from '../../lib/format';
+import Panel from '../ui/Panel.astro';
+
+const byId = new Map(projects.map((p) => [p.id, p]));
+const cols = projects.map((p) => p.id).sort();
+
+const totalSaving = transferSuggestions.reduce((s, t) => s + t.saving, 0);
+const criticalCells = supplyMatrix.flatMap((r) => r.cells).filter((c) => c.days <= 4).length;
+
+const bands = [
+  { key: 'kritis', label: '≤ 4 hari — konstruksi terancam berhenti' },
+  { key: 'segera', label: '5–9 hari — perlu pemesanan segera' },
+  { key: 'ideal', label: '10–20 hari — ideal' },
+  { key: 'mengendap', label: '> 20 hari — modal mengendap, kandidat dipindahkan' },
+];
+---
+
+<Panel
+  id="C2"
+  title="Keseimbangan stok antar proyek"
+  question="Proyek mana yang akan berhenti karena kehabisan material, dan dari mana stok bisa diambil?"
+  source="ERP inventory lintas lokasi, mesin rekomendasi pada platform big data"
+  freshness="1 jam"
+>
+  <p class="c2-lead">
+    Angka menunjukkan <strong>hari pasokan tersisa</strong> = stok di lokasi dibagi rata-rata pemakaian harian
+    14 hari terakhir. <strong class="t-red">{criticalCells} kombinasi</strong> berada di bawah 5 hari.
+  </p>
+
+  <div class="matrix-wrap" tabindex="0" role="region" aria-label="Matriks hari pasokan material per proyek">
+    <table class="matrix">
+      <caption class="sr-only">Hari pasokan tersisa untuk setiap material di setiap proyek</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="matrix__corner">Material</th>
+          {
+            cols.map((id) => (
+              <th scope="col" class="matrix__colhead" data-col={id}>
+                <span class="matrix__colname">{shortName[id]}</span>
+              </th>
+            ))
+          }
+        </tr>
+      </thead>
+      <tbody>
+        {
+          supplyMatrix.map((row) => (
+            <tr>
+              <th scope="row" class="matrix__rowhead">
+                {row.material}
+                <span class="matrix__unit">{row.unit}</span>
+              </th>
+              {
+                cols.map((id) => {
+                  const cell = row.cells.find((c) => c.projectId === id);
+                  if (!cell) return <td class="matrix__cell matrix__cell--none" data-col={id}>·</td>;
+                  const b = supplyBand(cell.days);
+                  return (
+                    <td
+                      class={`matrix__cell is-${b.key}`}
+                      data-col={id}
+                      data-tip={`${row.material} · ${shortName[id]}\nHari pasokan\t${cell.days} hari\nStatus\t${b.label}`}
+                      tabindex="0"
+                    >
+                      {cell.days}
+                    </td>
+                  );
+                })
+              }
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <ul class="bandlegend">
+    {
+      bands.map((b) => (
+        <li class="bandlegend__item">
+          <span class={`bandlegend__chip is-${b.key}`} aria-hidden="true" />
+          {b.label}
+        </li>
+      ))
+    }
+  </ul>
+
+  <div class="transfer">
+    <div class="transfer__head">
+      <h3 class="transfer__title display">Usulan pemindahan stok</h3>
+      <span class="transfer__saving">
+        Estimasi penghematan total <strong class="num t-green">{rupiahJuta(totalSaving)}</strong>
+      </span>
+    </div>
+
+    <div class="table-scroll">
+    <table class="table transfer__table">
+      <thead>
+        <tr>
+          <th scope="col">Material</th>
+          <th scope="col">Dari</th>
+          <th scope="col">Ke</th>
+          <th scope="col">Jumlah</th>
+          <th scope="col" class="ta-r">Penghematan</th>
+          <th scope="col">Dasar usulan</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          transferSuggestions.map((t) => (
+            <tr>
+              <td><strong>{t.material}</strong></td>
+              <td>
+                <button type="button" class="linkish" data-project-open={t.from}>{shortName[t.from]}</button>
+              </td>
+              <td>
+                <button type="button" class="linkish" data-project-open={t.to}>{shortName[t.to]}</button>
+              </td>
+              <td class="nowrap">{t.qty}</td>
+              <td class="n t-green">{rupiahJuta(t.saving)}</td>
+              <td class="reason">{t.reason}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+    </div>
+
+    <p class="transfer__note">
+      Usulan dihitung dari besarnya defisit, jarak antar lokasi, biaya angkut, dan rencana pemakaian dua minggu ke
+      depan. Bersifat rekomendasi; eksekusi tetap melalui proses persetujuan di ERP.
+    </p>
+  </div>
+</Panel>
+
+<style>
+  .c2-lead { margin: 0 0 13px; font-size: 0.8125rem; color: var(--ink-2); max-width: 90ch; }
+
+  .matrix-wrap { overflow-x: auto; border: 1px solid var(--line); }
+
+  .matrix { border-collapse: collapse; width: 100%; }
+
+  .matrix__corner,
+  .matrix__rowhead {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--panel);
+    text-align: left;
+    border-right: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  .matrix__corner {
+    z-index: 3;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 8px 12px;
+    vertical-align: bottom;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .matrix__colhead {
+    padding: 8px 0 7px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    vertical-align: bottom;
+    font-weight: 500;
+  }
+
+  .matrix__colname {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 0.6875rem;
+    color: var(--ink-2);
+    white-space: nowrap;
+    margin: 0 auto;
+    display: block;
+    max-height: 106px;
+    overflow: hidden;
+  }
+
+  .matrix__rowhead {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .matrix__unit { font-weight: 400; color: var(--ink-3); font-size: 0.625rem; margin-left: 5px; }
+
+  .matrix__cell {
+    text-align: center;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    padding: 7px 4px;
+    min-width: 40px;
+    border-bottom: 1px solid var(--line-soft);
+    border-left: 1px solid var(--panel);
+    color: var(--ink);
+    cursor: default;
+  }
+
+  .matrix__cell:hover, .matrix__cell:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+  .matrix__cell.is-kritis    { background: #EBB7AF; color: #5C1B12; }
+  .matrix__cell.is-segera    { background: #F5DCAE; color: #5A3A02; }
+  .matrix__cell.is-ideal     { background: #CFE3D8; color: #1D4F39; }
+  .matrix__cell.is-mengendap { background: #CFDDEE; color: #1C3F68; }
+  .matrix__cell--none { background: var(--neutral-wash); color: var(--ink-3); }
+
+  /* penanda kedua selain warna untuk sel kritis */
+  .matrix__cell.is-kritis {
+    background-image: repeating-linear-gradient(135deg, rgba(190, 58, 43, 0.28) 0 2px, transparent 2px 6px);
+  }
+
+  .bandlegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    list-style: none;
+    margin: 11px 0 0;
+    padding: 0;
+    font-size: 0.6875rem;
+    color: var(--ink-2);
+  }
+
+  .bandlegend__item { display: inline-flex; align-items: center; gap: 7px; }
+  .bandlegend__chip { inline-size: 12px; block-size: 12px; flex: none; border: 1px solid rgba(22,35,59,0.12); }
+  .bandlegend__chip.is-kritis    { background: #EBB7AF; }
+  .bandlegend__chip.is-segera    { background: #F5DCAE; }
+  .bandlegend__chip.is-ideal     { background: #CFE3D8; }
+  .bandlegend__chip.is-mengendap { background: #CFDDEE; }
+
+  .transfer { margin-top: 22px; padding-top: 16px; border-top: 2px solid var(--line); }
+
+  .transfer__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  .transfer__title { font-size: 1.0625rem; margin: 0; }
+  .transfer__saving { font-size: 0.75rem; color: var(--ink-2); }
+  .transfer__saving strong { font-size: 1rem; }
+
+  .transfer__table { border: 1px solid var(--line-soft); min-width: 600px; }
+  .ta-r { text-align: right; }
+  .nowrap { white-space: nowrap; }
+  .reason { font-size: 0.75rem; color: var(--ink-2); }
+
+  .linkish {
+    font: inherit;
+    font-weight: 600;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--blue-ink);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-align: left;
+  }
+
+  .linkish:hover { color: var(--ink); }
+
+  .transfer__note { margin: 10px 0 0; font-size: 0.6875rem; color: var(--ink-3); line-height: 1.45; max-width: 90ch; }
+</style>

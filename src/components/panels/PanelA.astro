@@ -1,0 +1,154 @@
+---
+import { projects, shortName } from '../../data/projects';
+import { ragOf } from '../../lib/rag';
+import ProjectCard from './ProjectCard.astro';
+import ProjectDetail from './ProjectDetail.astro';
+import BoardSummary from './BoardSummary.astro';
+
+/** Proyek kritis lebih dulu — panel menonjolkan yang menyimpang, bukan semuanya. */
+const order = { merah: 0, kuning: 1, hijau: 2 } as const;
+const sorted = [...projects].sort(
+  (a, b) => order[ragOf(a)] - order[ragOf(b)] || b.riskScore - a.riskScore,
+);
+
+/** Data ringkas untuk penyaring global; perhitungan tetap mengikuti aturan RAG di server. */
+const clientData = projects.map((p) => ({
+  id: p.id,
+  short: shortName[p.id],
+  category: p.category,
+  rag: ragOf(p),
+  value: p.contractValue,
+  risk: p.riskScore,
+}));
+---
+
+<section class="board panel" aria-labelledby="panel-A-title">
+  <header class="board__head">
+    <div class="board__heading">
+      <div class="board__headrow">
+        <span class="panel__id" aria-hidden="true">A</span>
+        <h2 class="panel__title" id="panel-A-title">Papan proyek</h2>
+      </div>
+      <p class="panel__question">Proyek mana yang sedang bermasalah hari ini?</p>
+    </div>
+    <p class="board__hint no-print">
+      Pilih kartu untuk membuka rincian proyek{' '}
+      <span class="muted">· disusun dari status paling kritis</span>
+    </p>
+  </header>
+
+  <div class="board__body">
+    <div class="board__grid" data-project-grid>
+      {sorted.map((p) => <ProjectCard project={p} />)}
+      <p class="board__empty" data-empty hidden>Tidak ada proyek pada penyaring ini.</p>
+    </div>
+    <BoardSummary projects={projects} />
+  </div>
+
+  <script type="application/json" data-projects-json set:html={JSON.stringify(clientData)} is:inline />
+
+  <footer class="panel__foot">
+    <span>Sumber: ERP modul Project Management, ERP modul keuangan, aplikasi inspeksi</span>
+    <span>Kesegaran: 15 menit</span>
+  </footer>
+</section>
+
+<dialog class="drawer" id="project-drawer" aria-label="Rincian proyek">
+  <div class="drawer__bar no-print">
+    <span class="eyebrow">Rincian proyek</span>
+    <button type="button" class="drawer__close" data-drawer-close aria-label="Tutup rincian proyek">Tutup ✕</button>
+  </div>
+  <div class="drawer__content">
+    {projects.map((p) => <ProjectDetail project={p} />)}
+  </div>
+</dialog>
+
+<style>
+  .board { grid-column: 1 / -1; }
+
+  .board__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px var(--pad) 11px;
+    border-bottom: 1px solid var(--line-soft);
+    flex-wrap: wrap;
+  }
+
+  .board__headrow { display: flex; align-items: center; gap: 9px; }
+  .board__hint { margin: 0; font-size: 0.6875rem; color: var(--ink-2); }
+
+  .board__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: stretch;
+  }
+
+  .board__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+    gap: 1px;
+    background: var(--line-soft);
+    border-top: 1px solid transparent;
+    align-content: start;
+  }
+
+  .board__empty { grid-column: 1 / -1; padding: 40px; text-align: center; background: var(--panel); color: var(--ink-3); margin: 0; }
+
+  /* ------------------------------------------------------------- drawer */
+
+  .drawer {
+    margin: 0 0 0 auto;
+    inline-size: min(620px, 100%);
+    block-size: 100%;
+    max-block-size: 100%;
+    padding: 0;
+    border: 0;
+    border-left: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--ink);
+    overflow: hidden;
+    flex-direction: column;
+  }
+
+  /* dialog tertutup harus tetap tersembunyi meski diberi display oleh aturan lain */
+  .drawer:not([open]) { display: none; }
+  .drawer[open] { display: flex; animation: slide-in 180ms ease-out; }
+
+  @keyframes slide-in {
+    from { transform: translateX(16px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .drawer::backdrop { background: rgba(22, 35, 59, 0.42); }
+
+  .drawer__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 18px 10px 22px;
+    border-bottom: 1px solid var(--line);
+    background: var(--concrete);
+    border-top: 3px solid var(--hivis);
+  }
+
+  .drawer__close {
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px 5px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .drawer__close:hover { background: #fff; border-color: var(--ink-3); }
+  .drawer__content { overflow-y: auto; flex: 1; }
+
+  @media (max-width: 1180px) {
+    .board__body { grid-template-columns: 1fr; }
+  }
+</style>
