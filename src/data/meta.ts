@@ -1,7 +1,7 @@
 /** Konteks kepala halaman: identitas sistem dan kesegaran data per aliran. */
 
 export const dashboardMeta = {
-    system: 'Director Board',
+    system: 'Dashboard Proyek PT Pembangunan Property',
     subtitle: 'Dashboard Progres Proyek',
     org: 'PT Pembangunan Property',
     unit: 'Digital Transformation Office',
